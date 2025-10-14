@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inline Style Test - Product Page</title>
+</head>
+<body style="margin: 0; font-family: Arial, sans-serif;">
+    
+    <div style="padding: 20px; text-align: center; background: #f0f0f0;">
+        <h1>Product Page Layout Test (Inline Styles)</h1>
+        <p>This uses inline styles to verify the layout works</p>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav style="padding: 2rem 4vw; display: flex; align-items: center; gap: 0.5rem; font-size: 14px;">
+        <a href="#" style="color: #000; opacity: 0.7;">Duka</a>
+        <span style="opacity: 0.5;">›</span>
+        <span>Test Product</span>
+    </nav>
+
+    <!-- Product Detail Section -->
+    <section style="padding: 0 4vw 4rem; max-width: 1800px; margin: 0 auto;">
+        <div style="display: grid; grid-template-columns: auto 1fr 1fr; gap: 3vw; align-items: start; border: 3px solid red;">
+            
+            <!-- Thumbnails - LEFT -->
+            <div style="display: flex; flex-direction: column; gap: 1rem; width: 80px; border: 3px solid blue;">
+                <div style="aspect-ratio: 3/4; background: #ddd; border: 1px solid #999;">
+                    <img src="assets/products/capo-brouwerij-sand.jpg" style="width: 100%; height: 100%; object-fit: cover;" alt="Thumb 1">
+                </div>
+                <div style="aspect-ratio: 3/4; background: #ddd; border: 1px solid #999;">
+                    <img src="assets/products/capo-brouwerij-blue.jpg" style="width: 100%; height: 100%; object-fit: cover;" alt="Thumb 2">
+                </div>
+            </div>
+
+            <!-- Main Image - CENTER -->
+            <div style="width: 100%; aspect-ratio: 3/4; background: #f8f8f8; position: relative; border: 3px solid green;">
+                <img src="assets/products/capo-brouwerij-sand.jpg" style="width: 100%; height: 100%; object-fit: cover;" alt="Main">
+                
+                <!-- Navigation Arrows -->
+                <button style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; width: 44px; height: 44px; cursor: pointer;">
+                    &lt;
+                </button>
+                <button style="position: absolute; top: 50%; right: 16px; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; width: 44px; height: 44px; cursor: pointer;">
+                    &gt;
+                </button>
+            </div>
+
+            <!-- Product Info - RIGHT -->
+            <div style="display: flex; flex-direction: column; gap: 11px; border: 3px solid orange;">
+                <h1 style="font-size: 2rem; font-weight: 400; margin: 0;">Capo Brouwerij T-Shirt</h1>
+                
+                <div style="font-size: 1.25rem; margin: 5px 0;">$39.99</div>
+
+                <div style="line-height: 1.8; opacity: 0.85; margin: 5px 0;">
+                    <p style="margin: 0;">If we got into brewing, besides creating exceptional beers with the passion that we pour into our clothing. The Capo Brouwerij T-Shirt would be workwear.</p>
+                </div>
+
+                <!-- Form -->
+                <form style="display: flex; flex-direction: column; gap: 16px; margin-top: 11px;">
+                    <div>
+                        <label style="display: block; font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Size</label>
+                        <select style="width: 100%; padding: 12px 16px; font-size: 16px; border: 1px solid rgba(0,0,0,0.15); background: white; cursor: pointer;">
+                            <option>Select Size</option>
+                            <option>S</option>
+                            <option>M</option>
+                            <option>L</option>
+                            <option>XL</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Color</label>
+                        <select style="width: 100%; padding: 12px 16px; font-size: 16px; border: 1px solid rgba(0,0,0,0.15); background: white; cursor: pointer;">
+                            <option>Select Color</option>
+                            <option>Sand</option>
+                            <option>Blue</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Quantity</label>
+                        <div style="display: flex; align-items: center; width: fit-content; border: 1px solid rgba(0,0,0,0.15);">
+                            <button type="button" style="width: 44px; height: 44px; border: none; background: none; cursor: pointer; font-size: 1.25rem;">−</button>
+                            <input type="number" value="1" min="1" max="10" style="width: 60px; height: 44px; border: none; border-left: 1px solid rgba(0,0,0,0.15); border-right: 1px solid rgba(0,0,0,0.15); text-align: center; font-size: 16px;">
+                            <button type="button" style="width: 44px; height: 44px; border: none; background: none; cursor: pointer; font-size: 1.25rem;">+</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" style="padding: 16px 32px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: 500; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px;">
+                        Add to Cart
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <div style="padding: 20px; background: #fffacd; margin: 20px; border-left: 4px solid #ffd700;">
+        <h2>What you should see:</h2>
+        <ul>
+            <li><strong>Red border</strong> = Container (3-column grid)</li>
+            <li><strong>Blue border</strong> = Thumbnails (narrow column on LEFT)</li>
+            <li><strong>Green border</strong> = Main image (center column)</li>
+            <li><strong>Orange border</strong> = Product info (right column)</li>
+        </ul>
+        <p><strong>✅ If you see 3 columns side by side, the layout works!</strong></p>
+        <p><strong>❌ If everything is stacked vertically, there's a CSS grid support issue.</strong></p>
+    </div>
+
+</body>
+</html>
