@@ -83,7 +83,12 @@ async function initiateMpesaPayment(phoneNumber, amount, accountReference) {
 
         if (!response.ok) {
             const error = await response.json();
-            console.error('Server error response:', error);
+            console.error('=== SERVER ERROR DETAILS ===');
+            console.error('Status:', response.status);
+            console.error('Error object:', error);
+            console.error('Message:', error.message);
+            console.error('Details:', error.details);
+            console.error('===========================');
             throw new Error(error.message || error.error || 'Payment request failed');
         }
 

@@ -27,12 +27,18 @@ async function getAccessToken() {
         throw new Error('M-Pesa credentials not configured');
     }
     
+    // Trim whitespace (common issue when copying from Netlify UI)
+    const cleanKey = consumerKey.trim();
+    const cleanSecret = consumerSecret.trim();
+    
     // Check for common issues
-    if (consumerKey.includes(' ') || consumerSecret.includes(' ')) {
+    if (cleanKey.includes(' ') || cleanSecret.includes(' ')) {
         throw new Error('M-Pesa credentials contain spaces - please check your environment variables');
     }
     
-    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    const auth = Buffer.from(`${cleanKey}:${cleanSecret}`).toString('base64');
+    
+    console.log('Attempting token request with key length:', cleanKey.length, 'secret length:', cleanSecret.length);
     
     try {
         const response = await axios.get(
@@ -41,14 +47,17 @@ async function getAccessToken() {
                 headers: { 'Authorization': `Basic ${auth}` }
             }
         );
+        console.log('Token obtained successfully');
         return response.data.access_token;
     } catch (error) {
         console.error('Token error details:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
-            consumerKeyLength: consumerKey?.length,
-            consumerSecretLength: consumerSecret?.length
+            consumerKeyLength: cleanKey?.length,
+            consumerSecretLength: cleanSecret?.length,
+            keyFirstChars: cleanKey?.substring(0, 5),
+            keyLastChars: cleanKey?.substring(cleanKey.length - 5)
         });
         
         if (error.response?.status === 400) {
@@ -136,20 +145,22 @@ exports.handler = async (event, context) => {
             timestamp
         );
         
-        // Prepare M-Pesa request
+        // Prepare M-Pesa request (matching exact format from Daraja docs)
         const requestBody = {
-            BusinessShortCode: process.env.MPESA_SHORTCODE,
+            BusinessShortCode: parseInt(process.env.MPESA_SHORTCODE),
             Password: password,
             Timestamp: timestamp,
             TransactionType: "CustomerPayBillOnline",
             Amount: Math.round(amount),
-            PartyA: phoneNumber,
-            PartyB: process.env.MPESA_SHORTCODE,
-            PhoneNumber: phoneNumber,
-            CallBackURL: process.env.MPESA_CALLBACK_URL || 'https://your-site.netlify.app/.netlify/functions/mpesa-callback',
+            PartyA: parseInt(phoneNumber),
+            PartyB: parseInt(process.env.MPESA_SHORTCODE),
+            PhoneNumber: parseInt(phoneNumber),
+            CallBackURL: process.env.MPESA_CALLBACK_URL || 'https://kejayacapo.netlify.app/.netlify/functions/mpesa-callback',
             AccountReference: accountReference || 'KejaYaCapo',
             TransactionDesc: 'Payment for KejaYaCapo Order'
         };
+        
+        console.log('Request body prepared:', JSON.stringify(requestBody, null, 2));
         
         // Call M-Pesa API
         const response = await axios.post(
