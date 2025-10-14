@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "MPESA_CONSUMER_KEY": "@mpesa-consumer-key",
+    "MPESA_CONSUMER_SECRET": "@mpesa-consumer-secret",
+    "MPESA_SHORTCODE": "@mpesa-shortcode",
+    "MPESA_PASSKEY": "@mpesa-passkey",
+    "MPESA_CALLBACK_URL": "@mpesa-callback-url"
+  }
+}

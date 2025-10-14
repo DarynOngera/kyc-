@@ -472,21 +472,18 @@ button {
 
 .product-meta {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: var(--spacing-sm);
+    flex-direction: column;
+    gap: var(--spacing-xs);
 }
 
 .product-title {
     font-size: var(--font-size-base);
     font-weight: 400;
-    flex: 1;
 }
 
 .product-price {
     font-size: var(--font-size-base);
     font-weight: 400;
-    white-space: nowrap;
 }
 
 /* ===================================

@@ -1,0 +1,20 @@
+[build]
+  # Directory with static files
+  publish = "."
+  
+  # Functions directory
+  functions = "netlify/functions"
+
+# Redirect rules (optional)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Headers for CORS
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"

@@ -1,0 +1,24 @@
+{
+  "name": "kejayacapo-duka",
+  "version": "1.0.0",
+  "description": "KejaYaCapo E-commerce with M-Pesa Integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "netlify-dev": "netlify dev"
+  },
+  "keywords": [
+    "mpesa",
+    "ecommerce",
+    "kenya"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

@@ -192,12 +192,8 @@ function initCheckout() {
                 return;
             }
 
-            // In a real application, this would redirect to checkout
-            alert('Checkout functionality would be implemented here.\n\nTotal: ' + 
-                  document.querySelector('.total-amount').textContent);
-            
-            // Optional: Clear cart after checkout
-            // clearCart();
+            // Redirect to checkout page
+            window.location.href = '/checkout.html';
         });
     }
 }
