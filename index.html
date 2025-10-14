@@ -274,6 +274,12 @@
             opacity: 0.7;
         }
 
+        .nav-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
         @media (max-width: 768px) {
             .landing-header .header-container {
                 padding: 1rem 6vw;
@@ -298,17 +304,19 @@
                     <img src="/assets/logo/logo.jpg" alt="KejaYaCapo Logo">
                 </a>
             </div>
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="/index.html">Karibu</a></li>
-                    <li><a href="/duka.html">Duka</a></li>
-                </ul>
-            </nav>
-            <button class="hamburger" aria-label="Menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
+            <div class="nav-wrapper">
+                <nav class="main-nav">
+                    <ul>
+                        <li><a href="/index.html">Karibu</a></li>
+                        <li><a href="/duka.html">Duka</a></li>
+                    </ul>
+                </nav>
+                <button class="hamburger" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
         </div>
     </header>
 

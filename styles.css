@@ -108,6 +108,12 @@ button {
     justify-content: space-between;
 }
 
+.nav-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
 .logo img {
     height: 50px;
     width: auto;
@@ -578,6 +584,8 @@ button {
     }
     
     .about-logo img {
+        max-width: 300px;
+    }
 }
 
 .terms-container h4 {
@@ -1012,5 +1020,4 @@ select:focus-visible {
     a {
         text-decoration: underline;
     }
-}
 }
