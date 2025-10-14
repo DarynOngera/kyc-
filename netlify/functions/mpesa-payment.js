@@ -21,6 +21,17 @@ function generatePassword(shortCode, passkey, timestamp) {
 async function getAccessToken() {
     const consumerKey = process.env.MPESA_CONSUMER_KEY;
     const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
+    
+    // Validate credentials exist
+    if (!consumerKey || !consumerSecret) {
+        throw new Error('M-Pesa credentials not configured');
+    }
+    
+    // Check for common issues
+    if (consumerKey.includes(' ') || consumerSecret.includes(' ')) {
+        throw new Error('M-Pesa credentials contain spaces - please check your environment variables');
+    }
+    
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
     
     try {
@@ -32,8 +43,19 @@ async function getAccessToken() {
         );
         return response.data.access_token;
     } catch (error) {
-        console.error('Token error:', error.response?.data || error.message);
-        throw new Error('Failed to get access token');
+        console.error('Token error details:', {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            consumerKeyLength: consumerKey?.length,
+            consumerSecretLength: consumerSecret?.length
+        });
+        
+        if (error.response?.status === 400) {
+            throw new Error('Invalid M-Pesa credentials. Please verify your MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET are correct for the sandbox environment.');
+        }
+        
+        throw new Error(`Failed to get access token: ${error.response?.data?.error_description || error.message}`);
     }
 }
 
@@ -64,8 +86,33 @@ exports.handler = async (event, context) => {
     }
     
     try {
-        // Parse request body
-        const { phoneNumber, amount, accountReference } = JSON.parse(event.body);
+        // Check if environment variables are set
+        if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
+            console.error('Missing M-Pesa credentials in environment variables');
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ 
+                    error: 'Server configuration error',
+                    message: 'M-Pesa credentials not configured. Please set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in Netlify environment variables.'
+                })
+            };
+        }
+        
+        // Parse request body with error handling
+        let requestData;
+        try {
+            requestData = JSON.parse(event.body || '{}');
+        } catch (parseError) {
+            console.error('Failed to parse request body:', parseError);
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: 'Invalid request body', message: parseError.message })
+            };
+        }
+        
+        const { phoneNumber, amount, accountReference } = requestData;
         
         // Validate input
         if (!phoneNumber || !amount) {
@@ -125,14 +172,25 @@ exports.handler = async (event, context) => {
         };
         
     } catch (error) {
-        console.error('Payment error:', error.response?.data || error.message);
+        console.error('Payment error:', {
+            message: error.message,
+            response: error.response?.data,
+            stack: error.stack
+        });
+        
+        // Provide detailed error information
+        const errorMessage = error.response?.data?.errorMessage 
+            || error.response?.data?.error
+            || error.message 
+            || 'Unknown error occurred';
         
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({
                 error: 'Payment failed',
-                message: error.response?.data?.errorMessage || error.message
+                message: errorMessage,
+                details: error.response?.data || null
             })
         };
     }

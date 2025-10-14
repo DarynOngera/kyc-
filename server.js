@@ -3,8 +3,16 @@
  * Run with: node server.js
  */
 
-const express = require('express');
-const cors = require('cors');
+// Check if required modules are available
+let express, cors;
+try {
+    express = require('express');
+    cors = require('cors');
+} catch (error) {
+    console.error('Missing dependencies. Please run: npm install express cors');
+    process.exit(1);
+}
+
 const axios = require('axios');
 require('dotenv').config();
 

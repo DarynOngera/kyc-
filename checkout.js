@@ -83,7 +83,8 @@ async function initiateMpesaPayment(phoneNumber, amount, accountReference) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Payment request failed');
+            console.error('Server error response:', error);
+            throw new Error(error.message || error.error || 'Payment request failed');
         }
 
         const result = await response.json();
@@ -166,10 +167,11 @@ async function handleCheckout(event) {
 
     } catch (error) {
         console.error('Payment error:', error);
-        showStatus(
-            'Payment failed. Please try again or contact support.',
-            'error'
-        );
+        
+        // Show detailed error message
+        const errorMsg = error.message || 'Payment failed. Please try again or contact support.';
+        showStatus(errorMsg, 'error');
+        
         payBtn.disabled = false;
     }
 }
