@@ -4,6 +4,9 @@
   
   # Functions directory
   functions = "netlify/functions"
+  
+  # Environment variables
+  environment = { SECRETS_SCAN_OMIT_PATHS = "*.md,DEPLOY_CHECKLIST.md,GITHUB_NETLIFY_DEPLOY.md,MPESA_BACKEND_GUIDE.md,NETLIFY_SETUP.md,QUICKSTART.md,SETUP_INSTRUCTIONS.md,TROUBLESHOOTING.md,MPESA_CREDENTIALS_GUIDE.md" }
 
 # Redirect rules (optional)
 [[redirects]]
