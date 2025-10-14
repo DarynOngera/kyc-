@@ -1,27 +1,45 @@
-# Duka - KejaYaCapo E-Commerce Page Replica
+# KejaYaCapo Duka - E-Commerce Store with M-Pesa Integration
 
-A clean, custom implementation of the Duka product page from the KejaYaCapo Squarespace website. This replica removes all Squarespace-specific dependencies and bloat, providing a lightweight, performant, and accessible e-commerce product listing page.
+A modern, full-featured e-commerce store for KejaYaCapo with integrated M-Pesa payment processing via Safaricom Daraja API. Built with vanilla JavaScript and deployed serverlessly on Netlify.
 
 ## 📁 Project Structure
 
 ```
 duka-replica/
-├── index.html          # Main HTML structure
-├── styles.css          # Custom CSS (no frameworks)
-├── script.js           # Vanilla JavaScript
-├── README.md           # This file
-└── assets/             # Images and other assets (create this folder)
-    └── logo.png        # Site logo
+├── index.html                      # Landing page
+├── duka.html                       # Product listing page
+├── cart.html                       # Shopping cart
+├── checkout.html                   # Checkout with M-Pesa
+├── styles.css                      # Global styles
+├── cart.js                         # Cart functionality
+├── checkout.js                     # Checkout & payment
+├── product-detail.js               # Product page logic
+├── netlify/
+│   └── functions/
+│       ├── mpesa-payment.js        # M-Pesa STK Push handler
+│       └── mpesa-callback.js       # Payment callback handler
+├── products/                       # Individual product pages
+├── assets/                         # Images and media
+├── netlify.toml                    # Netlify configuration
+├── package.json                    # Dependencies
+└── .env                            # Environment variables (not committed)
 ```
 
 ## ✨ Features
 
-### Core Functionality
-- **Product Grid Layout**: Responsive 3-column grid (desktop), 2-column (tablet), 1-column (mobile)
-- **Category Navigation**: Desktop horizontal menu with separators, mobile dropdown select
-- **Product Hover Effects**: Image swap on hover for product variants
-- **Scrolling Hero Banner**: Animated text marquee effect
-- **Responsive Design**: Mobile-first approach with breakpoints at 768px and 1024px
+### E-Commerce Functionality
+- ✅ **Product Catalog**: Browse products by category (T-Shirts, Hoodies, Shorts, Sweatshirts)
+- ✅ **Product Details**: Individual product pages with image gallery and variant selection
+- ✅ **Shopping Cart**: Add/remove items, update quantities, persistent cart (localStorage)
+- ✅ **Checkout**: Integrated M-Pesa payment processing
+- ✅ **Mobile Responsive**: Optimized for all screen sizes
+
+### M-Pesa Integration
+- ✅ **STK Push**: Automatic payment prompts to customer's phone
+- ✅ **Sandbox Testing**: Full sandbox environment for testing
+- ✅ **Secure Backend**: Serverless functions handle API credentials
+- ✅ **Payment Callbacks**: Real-time payment confirmation
+- ✅ **USD to KES Conversion**: Automatic currency conversion
 
 ### Performance Optimizations
 - **Lazy Loading**: Images load as they enter viewport using IntersectionObserver
@@ -41,39 +59,49 @@ duka-replica/
 - **CSS Custom Properties**: Easy theming and maintenance
 - **Vanilla JavaScript**: No jQuery or other heavy dependencies
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### 1. Setup
-```bash
-# Create the assets folder
-mkdir -p duka-replica/assets
-
-# Add your logo image
-# Place logo.png in the assets folder
-```
-
-### 2. Customize Product Images
-The current implementation uses Squarespace CDN URLs. To use your own images:
-
-1. Replace image URLs in `index.html` with your own
-2. Update the `src` and `data-src` attributes
-3. Ensure images are optimized (WebP format recommended)
-
-### 3. Run Locally
-Simply open `index.html` in a web browser, or use a local server:
+### Local Development
 
 ```bash
-# Using Python 3
-python -m http.server 8000
+# Install dependencies
+npm install
 
-# Using Node.js (http-server)
-npx http-server
-
-# Using PHP
-php -S localhost:8000
+# Run local Netlify development server
+npx netlify dev
 ```
 
-Then visit `http://localhost:8000`
+Visit `http://localhost:8888` - M-Pesa functions will work locally!
+
+### Deploy to Netlify via GitHub
+
+**See detailed guide:** [GITHUB_NETLIFY_DEPLOY.md](GITHUB_NETLIFY_DEPLOY.md)
+
+**Quick steps:**
+
+1. **Push to GitHub**
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR_USERNAME/kejayacapo-duka.git
+git push -u origin main
+```
+
+2. **Connect to Netlify**
+   - Go to https://app.netlify.com
+   - Click "Add new site" → "Import from GitHub"
+   - Select your repository
+   - Deploy!
+
+3. **Add Environment Variables** in Netlify dashboard:
+   - `MPESA_CONSUMER_KEY`
+   - `MPESA_CONSUMER_SECRET`
+   - `MPESA_SHORTCODE`
+   - `MPESA_PASSKEY`
+   - `MPESA_CALLBACK_URL`
+
+4. **Done!** Your site auto-deploys on every push 🎉
 
 ## 🎨 Customization
 
@@ -195,23 +223,47 @@ All code is thoroughly commented:
 - **CSS**: Organized by component with clear headers
 - **JavaScript**: Function documentation and inline explanations
 
-## 🐛 Known Limitations
+## 💳 M-Pesa Payment Flow
 
-1. **Static Content**: Products are hardcoded in HTML
-2. **No Backend**: Cart functionality is localStorage-based only
-3. **Image Hosting**: Currently uses Squarespace CDN URLs
-4. **No Search**: Product filtering/search not implemented
+1. Customer adds items to cart
+2. Proceeds to checkout
+3. Enters M-Pesa phone number (254XXXXXXXXX)
+4. Backend generates secure password and timestamp
+5. STK Push sent to customer's phone
+6. Customer enters M-Pesa PIN
+7. Payment confirmed via callback
+8. Order completed
+
+**Test Phone Numbers (Sandbox):**
+- `254708374149`
+- `254708374150`
+
+## 🔐 Security
+
+- ✅ Environment variables for all credentials
+- ✅ Backend functions handle sensitive operations
+- ✅ No API keys exposed in frontend
+- ✅ CORS properly configured
+- ✅ `.env` file excluded from Git
+
+## 📚 Documentation
+
+- **[GITHUB_NETLIFY_DEPLOY.md](GITHUB_NETLIFY_DEPLOY.md)** - Deploy via GitHub (recommended)
+- **[NETLIFY_SETUP.md](NETLIFY_SETUP.md)** - Manual Netlify setup
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick reference commands
+- **[MPESA_BACKEND_GUIDE.md](MPESA_BACKEND_GUIDE.md)** - M-Pesa API details
+- **[SERVERLESS_DEPLOYMENT.md](SERVERLESS_DEPLOYMENT.md)** - Serverless options
 
 ## 🚧 Future Enhancements
 
-- [ ] Add product filtering by category
-- [ ] Implement search functionality
-- [ ] Add product quick view modal
-- [ ] Integrate with payment gateway
-- [ ] Add product reviews/ratings
-- [ ] Implement wishlist functionality
-- [ ] Add size/color variant selection
-- [ ] Create product detail page template
+- [ ] Database integration for orders
+- [ ] Email notifications
+- [ ] Order tracking
+- [ ] Admin dashboard
+- [ ] Product search
+- [ ] User accounts
+- [ ] Wishlist
+- [ ] Product reviews
 
 ## 📄 License
 
