@@ -14,10 +14,22 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Headers for CORS
+# Headers for CORS and SEO
 [[headers]]
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type"
+
+# SEO Headers - Block indexing on Netlify CDN domain
+# When you set up custom domain (kejayacapo.shop), configure these in Netlify dashboard:
+# 1. Go to Site settings > Domain management > Custom domains
+# 2. Add kejayacapo.shop as primary domain
+# 3. The X-Robots-Tag below will prevent netlify.app from being indexed
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Block search engine indexing on *.netlify.app domains
+    # This header will be overridden by your custom domain configuration
+    X-Robots-Tag = "noindex, nofollow"

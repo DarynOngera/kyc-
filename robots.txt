@@ -1,0 +1,13 @@
+# Robots.txt for KejaYaCapo
+# This file prevents CDN domains from being indexed by search engines
+
+# Default rules for the primary domain (kejayacapo.shop)
+User-agent: *
+Allow: /
+
+# Sitemap location (update this when you create a sitemap)
+Sitemap: https://kejayacapo.shop/sitemap.xml
+
+# Block all crawlers if accessed via CDN domains
+# This section will be active when accessed via netlify.app or other CDN URLs
+# Note: You may need to configure this at the CDN level for full effectiveness
