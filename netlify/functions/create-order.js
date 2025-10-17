@@ -1,5 +1,6 @@
 // Create Order Function
 const { getSupabaseClient } = require('./utils/supabase');
+const { sendOrderConfirmationEmail } = require('./utils/email');
 
 exports.handler = async (event, context) => {
     const headers = {
@@ -145,6 +146,35 @@ exports.handler = async (event, context) => {
         if (cartError) {
             console.error('Cart clear error:', cartError);
             // Cart clear failed - log but don't fail
+        }
+        
+        // Get user details for email
+        const { data: user } = await supabase
+            .from('users')
+            .select('email, full_name')
+            .eq('id', userId)
+            .single();
+        
+        // Send order confirmation email
+        if (user && user.email) {
+            try {
+                console.log('Sending order confirmation email to:', user.email);
+                await sendOrderConfirmationEmail(user.email, {
+                    customerName: user.full_name,
+                    orderNumber: order.order_number,
+                    amount: totalAmount,
+                    items: cartItems.map(item => ({
+                        name: item.title || item.name,
+                        quantity: item.quantity,
+                        price: parseFloat(item.price)
+                    })),
+                    paymentPending: false // Order is created after payment completes
+                });
+                console.log('✅ Order confirmation email sent successfully');
+            } catch (emailError) {
+                console.error('❌ Failed to send order confirmation email:', emailError);
+                // Don't fail the order creation if email fails
+            }
         }
         
         return {
