@@ -157,8 +157,10 @@
                     <ul>
                         <li><a href="/index.html">Karibu</a></li>
                         <li><a href="/duka.html" class="active">Duka</a></li>
-                        <li><a href="/login.html">Log In</a></li>
-                        <li><a href="/signup.html">Sign Up</a></li>
+                        <li class="auth-link" id="loginLink"><a href="/login.html">Log In</a></li>
+                        <li class="auth-link" id="signupLink"><a href="/signup.html">Sign Up</a></li>
+                        <li class="user-link" id="userInfo" style="display: none;"><a href="#" id="userNameLink">Account</a></li>
+                        <li class="user-link" id="logoutLink" style="display: none;"><a href="#" onclick="handleLogout(event)">Log Out</a></li>
                     </ul>
                 </nav>
                 <a href="/cart.html" class="cart-link" aria-label="Shopping Cart" style="margin-right: 1rem;">
@@ -183,8 +185,10 @@
         <ul>
             <li><a href="/index.html">Karibu</a></li>
             <li><a href="/duka.html">Duka</a></li>
-            <li><a href="/login.html">Log In</a></li>
-            <li><a href="/signup.html">Sign Up</a></li>
+            <li class="auth-link" id="mobileLoginLink"><a href="/login.html">Log In</a></li>
+            <li class="auth-link" id="mobileSignupLink"><a href="/signup.html">Sign Up</a></li>
+            <li class="user-link" id="mobileUserInfo" style="display: none;"><a href="#" id="mobileUserNameLink">Account</a></li>
+            <li class="user-link" id="mobileLogoutLink" style="display: none;"><a href="#" onclick="handleLogout(event)">Log Out</a></li>
         </ul>
     </div>
 
@@ -431,6 +435,75 @@
     </footer>
 
     <script>
+        // Check authentication status and update navigation
+        function updateNavigation() {
+            const token = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('userData');
+            
+            // Desktop navigation
+            const loginLink = document.getElementById('loginLink');
+            const signupLink = document.getElementById('signupLink');
+            const userInfo = document.getElementById('userInfo');
+            const logoutLink = document.getElementById('logoutLink');
+            const userNameLink = document.getElementById('userNameLink');
+            
+            // Mobile navigation
+            const mobileLoginLink = document.getElementById('mobileLoginLink');
+            const mobileSignupLink = document.getElementById('mobileSignupLink');
+            const mobileUserInfo = document.getElementById('mobileUserInfo');
+            const mobileLogoutLink = document.getElementById('mobileLogoutLink');
+            const mobileUserNameLink = document.getElementById('mobileUserNameLink');
+            
+            if (token && userData) {
+                // User is logged in
+                const user = JSON.parse(userData);
+                const userName = user.full_name || user.email.split('@')[0];
+                
+                // Hide login/signup
+                if (loginLink) loginLink.style.display = 'none';
+                if (signupLink) signupLink.style.display = 'none';
+                if (mobileLoginLink) mobileLoginLink.style.display = 'none';
+                if (mobileSignupLink) mobileSignupLink.style.display = 'none';
+                
+                // Show user info and logout
+                if (userInfo) userInfo.style.display = 'block';
+                if (logoutLink) logoutLink.style.display = 'block';
+                if (mobileUserInfo) mobileUserInfo.style.display = 'block';
+                if (mobileLogoutLink) mobileLogoutLink.style.display = 'block';
+                
+                // Set user name
+                if (userNameLink) userNameLink.textContent = userName;
+                if (mobileUserNameLink) mobileUserNameLink.textContent = userName;
+            } else {
+                // User is not logged in
+                // Show login/signup
+                if (loginLink) loginLink.style.display = 'block';
+                if (signupLink) signupLink.style.display = 'block';
+                if (mobileLoginLink) mobileLoginLink.style.display = 'block';
+                if (mobileSignupLink) mobileSignupLink.style.display = 'block';
+                
+                // Hide user info and logout
+                if (userInfo) userInfo.style.display = 'none';
+                if (logoutLink) logoutLink.style.display = 'none';
+                if (mobileUserInfo) mobileUserInfo.style.display = 'none';
+                if (mobileLogoutLink) mobileLogoutLink.style.display = 'none';
+            }
+        }
+        
+        // Handle logout
+        function handleLogout(event) {
+            event.preventDefault();
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('cart'); // Clear cart on logout
+            updateNavigation();
+            updateCartCount();
+            window.location.href = '/index.html';
+        }
+        
+        // Update navigation on page load
+        updateNavigation();
+        
         // Hamburger menu toggle
         const hamburger = document.querySelector('.hamburger');
         const mobileMenu = document.querySelector('.mobile-menu');
