@@ -13,7 +13,7 @@ The system now sends **two separate emails** to customers during the purchase pr
 - Customer clicks "Pay with M-Pesa" on checkout page
 - M-Pesa STK push is sent (production only)
 - Transaction record created with status: `initiated`
-- **No email sent yet**
+- **⚠️ No email sent yet** - Emails are only sent AFTER payment is confirmed by M-Pesa
 
 ### Step 2: Customer Completes M-Pesa Payment
 - Customer enters M-Pesa PIN on their phone
@@ -234,10 +234,11 @@ Replace text header with image:
 ### Emails Not Sending
 
 **Check:**
-1. `RESEND_API_KEY` is set correctly
-2. `FROM_EMAIL` matches verified domain
+1. `RESEND_API_KEY` is set correctly in Netlify environment variables
+2. `FROM_EMAIL` matches verified domain (must be `orders@kejayacapo.shop`)
 3. Domain is verified in Resend dashboard
 4. Check Netlify function logs for errors
+5. **IMPORTANT:** Emails are NOT sent when you click "Pay with M-Pesa" - they are sent AFTER M-Pesa confirms the payment
 
 **Common Errors:**
 
@@ -249,6 +250,14 @@ Solution: Change FROM_EMAIL to orders@kejayacapo.shop
 ```
 Error: Resend API key not configured
 Solution: Add RESEND_API_KEY to Netlify environment variables
+```
+
+```
+Issue: No email received after clicking "Pay with M-Pesa"
+Reason: This is expected! Emails are sent AFTER:
+  1. M-Pesa confirms payment (callback received)
+  2. Order is created in database
+Solution: Complete the M-Pesa payment on your phone, then check email
 ```
 
 ### Emails Going to Spam
