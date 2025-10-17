@@ -94,46 +94,60 @@ exports.handler = async (event, context) => {
         };
     }
     
+    // Check if environment variables are set
+    if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
+        console.error('Missing M-Pesa credentials in environment variables');
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({
+                error: 'Server configuration error',
+                message: 'M-Pesa credentials not configured. Please set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in Netlify environment variables.'
+            })
+        };
+    }
+
+    // Parse request body with error handling
+    let phoneNumber, amount, accountReference;
     try {
-        // Check if environment variables are set
-        if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
-            console.error('Missing M-Pesa credentials in environment variables');
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({ 
-                    error: 'Server configuration error',
-                    message: 'M-Pesa credentials not configured. Please set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in Netlify environment variables.'
-                })
-            };
+        const requestData = JSON.parse(event.body || '{}');
+        ({ phoneNumber, amount, accountReference } = requestData);
+    } catch (parseError) {
+        console.error('Failed to parse request body:', parseError);
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid request body', message: parseError.message })
+        };
+    }
+
+    // Extract user ID from JWT token (optional, for linking transaction to user)
+    let userId = null;
+    try {
+        const authHeader = event.headers.authorization || event.headers.Authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            const jwt = require('jsonwebtoken');
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            userId = decoded?.userId;
+            console.log('User ID from token:', userId);
         }
-        
-        // Parse request body with error handling
-        let requestData;
-        try {
-            requestData = JSON.parse(event.body || '{}');
-        } catch (parseError) {
-            console.error('Failed to parse request body:', parseError);
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: 'Invalid request body', message: parseError.message })
-            };
-        }
-        
-        const { phoneNumber, amount, accountReference } = requestData;
-        
-        // Validate input
-        if (!phoneNumber || !amount) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: 'Phone number and amount are required' })
-            };
-        }
-        
-        console.log('Processing payment:', { phoneNumber, amount });
-        
+    } catch (authError) {
+        console.log('No valid auth token, proceeding without user ID');
+    }
+
+    // Validate input
+    if (!phoneNumber || !amount) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: 'Phone number and amount are required' })
+        };
+    }
+
+    console.log('Processing payment:', { phoneNumber, amount });
+
+    // Main function logic
+    try {
         // Get M-Pesa access token
         const token = await getAccessToken();
         
@@ -175,6 +189,54 @@ exports.handler = async (event, context) => {
         );
         
         console.log('M-Pesa response:', response.data);
+        
+        // Store initial transaction record with CheckoutRequestID for tracking
+        if (response.data.CheckoutRequestID) {
+            try {
+                const { getSupabaseClient } = require('./utils/supabase');
+                const supabase = getSupabaseClient();
+                
+                console.log('Attempting to insert transaction record...');
+                console.log('Supabase URL configured:', !!process.env.SUPABASE_URL);
+                console.log('Service Role Key configured:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+                console.log('Anon Key configured:', !!process.env.SUPABASE_ANON_KEY);
+                
+                const { data, error } = await supabase
+                    .from('transactions')
+                    .insert([
+                        {
+                            checkout_request_id: response.data.CheckoutRequestID,
+                            merchant_request_id: response.data.MerchantRequestID,
+                            phone_number: phoneNumber.toString(),
+                            amount: amount,
+                            status: 'initiated',
+                            user_id: userId, // Link to authenticated user
+                            created_at: new Date().toISOString()
+                        }
+                    ])
+                    .select();
+                
+                if (error) {
+                    console.error('❌ DATABASE INSERT FAILED:', {
+                        error: error,
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    });
+                    throw error;
+                }
+                
+                console.log('✅ Initial transaction record created successfully:', data);
+            } catch (dbError) {
+                console.error('❌ Failed to create initial transaction record:', {
+                    name: dbError.name,
+                    message: dbError.message,
+                    stack: dbError.stack
+                });
+                // Don't fail the request if DB insert fails
+            }
+        }
         
         return {
             statusCode: 200,

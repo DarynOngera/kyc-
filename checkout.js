@@ -68,11 +68,15 @@ function displayOrderSummary() {
 // ===================================
 async function initiateMpesaPayment(phoneNumber, amount, accountReference) {
     try {
+        // Get auth token
+        const token = localStorage.getItem('authToken');
+        
         // Call backend API instead of M-Pesa directly
         const response = await fetch(MPESA_CONFIG.apiEndpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 phoneNumber,
@@ -144,21 +148,17 @@ async function handleCheckout(event) {
 
         if (result.ResponseCode === '0') {
             // Success - STK Push sent
+            const checkoutRequestId = result.CheckoutRequestID;
+            
             showStatus(
                 `Payment request sent! Please enter your M-Pesa PIN on your phone (${phoneNumber}) to complete the payment.`,
                 'success'
             );
 
-            // In production, you would:
-            // 1. Poll your backend for payment confirmation
-            // 2. Clear cart after successful payment
-            // 3. Redirect to order confirmation page
-            
+            // Start polling for payment status
             setTimeout(() => {
-                showStatus(
-                    'Waiting for payment confirmation... This may take a few moments.',
-                    'loading'
-                );
+                showStatus('Waiting for payment confirmation... This may take a few moments.', 'loading');
+                pollPaymentStatus(checkoutRequestId, 0);
             }, 3000);
 
         } else {
@@ -182,10 +182,166 @@ async function handleCheckout(event) {
 }
 
 // ===================================
+// Payment Status Polling
+// ===================================
+async function pollPaymentStatus(checkoutRequestId, attemptCount) {
+    const MAX_ATTEMPTS = 40; // 40 attempts x 3 seconds = 2 minutes
+    const POLL_INTERVAL = 3000; // 3 seconds
+    
+    if (attemptCount >= MAX_ATTEMPTS) {
+        showStatus(
+            'Payment verification timeout. Please check your M-Pesa messages or contact support.',
+            'error'
+        );
+        document.getElementById('pay-btn').disabled = false;
+        return;
+    }
+    
+    try {
+        const response = await fetch(
+            `/.netlify/functions/transaction-status?checkoutRequestId=${checkoutRequestId}`
+        );
+        
+        if (!response.ok) {
+            throw new Error('Failed to check payment status');
+        }
+        
+        const data = await response.json();
+        console.log('Payment status:', data);
+        
+        if (data.status === 'completed') {
+            // Payment successful!
+            showStatus('✅ Payment successful! Creating your order...', 'success');
+            
+            // Create order
+            await createOrder(data);
+            
+        } else if (data.status === 'failed') {
+            // Payment failed
+            showStatus(
+                `❌ Payment failed: ${data.resultDesc || 'Transaction was not completed'}`,
+                'error'
+            );
+            document.getElementById('pay-btn').disabled = false;
+            
+        } else {
+            // Still pending, poll again
+            setTimeout(() => {
+                pollPaymentStatus(checkoutRequestId, attemptCount + 1);
+            }, POLL_INTERVAL);
+        }
+        
+    } catch (error) {
+        console.error('Status check error:', error);
+        
+        // Retry on error
+        setTimeout(() => {
+            pollPaymentStatus(checkoutRequestId, attemptCount + 1);
+        }, POLL_INTERVAL);
+    }
+}
+
+// ===================================
+// Create Order After Payment
+// ===================================
+async function createOrder(transactionData) {
+    try {
+        const userData = getUserData();
+        const cart = getCart();
+        
+        if (!userData || !cart || cart.length === 0) {
+            throw new Error('Missing user data or cart items');
+        }
+        
+        // Create order with transaction data
+        const response = await fetch('/.netlify/functions/create-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                transactionId: transactionData.transactionId,
+                userId: userData.id,
+                cartItems: cart
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to create order');
+        }
+        
+        const orderData = await response.json();
+        console.log('Order created:', orderData);
+        
+        // Clear local cart
+        localStorage.removeItem('cart');
+        
+        // Redirect to confirmation page with order details
+        const orderInfo = encodeURIComponent(JSON.stringify({
+            orderNumber: orderData.order.orderNumber,
+            amount: orderData.order.totalAmount,
+            mpesaReceipt: orderData.order.mpesaReceipt
+        }));
+        
+        window.location.href = `/order-confirmation.html?order=${orderInfo}`;
+        
+    } catch (error) {
+        console.error('Order creation error:', error);
+        showStatus(
+            'Payment successful but order creation failed. Please contact support with your M-Pesa receipt.',
+            'error'
+        );
+    }
+}
+
+// ===================================
+// Authentication Check
+// ===================================
+function checkAuthentication() {
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (!token || !userData) {
+        // User is not logged in, save current page and redirect to login
+        sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+        window.location.href = '/login.html';
+        return false;
+    }
+    
+    return true;
+}
+
+function getUserData() {
+    const userData = localStorage.getItem('userData');
+    return userData ? JSON.parse(userData) : null;
+}
+
+function prefillUserData() {
+    const user = getUserData();
+    if (user && user.phone_number) {
+        const phoneInput = document.getElementById('phone');
+        if (phoneInput) {
+            phoneInput.value = user.phone_number;
+        }
+        
+        const accountRefInput = document.getElementById('account-ref');
+        if (accountRefInput && user.full_name) {
+            accountRefInput.value = user.full_name;
+        }
+    }
+}
+
+// ===================================
 // Initialize
 // ===================================
 function init() {
+    // Check if user is authenticated before proceeding
+    if (!checkAuthentication()) {
+        return; // Stop initialization if not authenticated
+    }
+    
     displayOrderSummary();
+    prefillUserData(); // Pre-fill form with user data
 
     const checkoutForm = document.getElementById('checkout-form');
     if (checkoutForm) {

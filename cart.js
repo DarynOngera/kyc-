@@ -178,6 +178,28 @@ function handleRemoveItem(e) {
 }
 
 // ===================================
+// Authentication Check
+// ===================================
+function isAuthenticated() {
+    const token = localStorage.getItem('authToken');
+    return !!token;
+}
+
+function showAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) {
+        modal.classList.add('show');
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+            }
+        });
+    }
+}
+
+// ===================================
 // Checkout
 // ===================================
 function initCheckout() {
@@ -192,7 +214,17 @@ function initCheckout() {
                 return;
             }
 
-            // Redirect to checkout page
+            // Check if user is authenticated
+            if (!isAuthenticated()) {
+                // Save intended destination
+                sessionStorage.setItem('redirectAfterLogin', '/checkout.html');
+                
+                // Show authentication modal
+                showAuthModal();
+                return;
+            }
+
+            // User is authenticated, proceed to checkout
             window.location.href = '/checkout.html';
         });
     }
