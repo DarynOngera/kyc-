@@ -1,6 +1,19 @@
 // Netlify Function for M-Pesa Payment
 const axios = require('axios');
 
+// Helper function to get M-Pesa base URL based on environment
+function getMpesaBaseURL() {
+    const environment = process.env.MPESA_ENVIRONMENT || 'sandbox';
+    const baseURL = environment === 'production'
+        ? 'https://api.safaricom.co.ke'
+        : 'https://sandbox.safaricom.co.ke';
+    
+    console.log(`🌍 M-Pesa Environment: ${environment.toUpperCase()}`);
+    console.log(`📡 Using base URL: ${baseURL}`);
+    
+    return baseURL;
+}
+
 // Helper functions
 function generateTimestamp() {
     const now = new Date();
@@ -40,9 +53,11 @@ async function getAccessToken() {
     
     console.log('Attempting token request with key length:', cleanKey.length, 'secret length:', cleanSecret.length);
     
+    const baseURL = getMpesaBaseURL();
+    
     try {
         const response = await axios.get(
-            'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+            `${baseURL}/oauth/v1/generate?grant_type=client_credentials`,
             {
                 headers: { 'Authorization': `Basic ${auth}` }
             }
@@ -176,9 +191,11 @@ exports.handler = async (event, context) => {
         
         console.log('Request body prepared:', JSON.stringify(requestBody, null, 2));
         
+        const baseURL = getMpesaBaseURL();
+        
         // Call M-Pesa API
         const response = await axios.post(
-            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+            `${baseURL}/mpesa/stkpush/v1/processrequest`,
             requestBody,
             {
                 headers: {

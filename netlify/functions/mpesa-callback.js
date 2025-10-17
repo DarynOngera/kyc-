@@ -91,19 +91,19 @@ exports.handler = async (event, context) => {
                         } else {
                             console.log('Transaction logged successfully:', transaction.id);
                             
-                            // Try to find the user by phone number
-                            const { data: user } = await supabase
-                                .from('users')
-                                .select('*')
-                                .eq('phone_number', phoneNumber.toString())
-                                .single();
+                            // Get user from transaction (already linked during payment initiation)
+                            let user = null;
+                            if (transaction.user_id) {
+                                const { data: userData } = await supabase
+                                    .from('users')
+                                    .select('*')
+                                    .eq('id', transaction.user_id)
+                                    .single();
+                                user = userData;
+                            }
                             
                             if (user) {
-                                // Update transaction with user_id
-                                await supabase
-                                    .from('transactions')
-                                    .update({ user_id: user.id })
-                                    .eq('id', transaction.id);
+                                console.log('User found:', user.email);
                                 
                                 // Get cart items if available
                                 const { data: cartItems } = await supabase
@@ -119,7 +119,8 @@ exports.handler = async (event, context) => {
                                 
                                 // Send customer email
                                 try {
-                                    await sendTransactionEmail(
+                                    console.log('Attempting to send customer email to:', user.email);
+                                    const emailResult = await sendTransactionEmail(
                                         user.email,
                                         `Order Confirmation - ${mpesaReceiptNumber}`,
                                         {
@@ -132,14 +133,19 @@ exports.handler = async (event, context) => {
                                             status: 'completed'
                                         }
                                     );
-                                    console.log('Customer email sent successfully');
+                                    console.log('✅ Customer email sent successfully:', emailResult);
                                 } catch (emailError) {
-                                    console.error('Failed to send customer email:', emailError);
+                                    console.error('❌ Failed to send customer email:', {
+                                        error: emailError.message,
+                                        stack: emailError.stack,
+                                        details: emailError
+                                    });
                                 }
                                 
                                 // Send admin notification
                                 try {
-                                    await sendAdminNotification({
+                                    console.log('Attempting to send admin notification');
+                                    const adminResult = await sendAdminNotification({
                                         customerName: user.full_name,
                                         customerEmail: user.email,
                                         orderId: mpesaReceiptNumber,
@@ -148,9 +154,13 @@ exports.handler = async (event, context) => {
                                         phoneNumber: phoneNumber.toString(),
                                         items: items
                                     });
-                                    console.log('Admin notification sent successfully');
+                                    console.log('✅ Admin notification sent successfully:', adminResult);
                                 } catch (emailError) {
-                                    console.error('Failed to send admin notification:', emailError);
+                                    console.error('❌ Failed to send admin notification:', {
+                                        error: emailError.message,
+                                        stack: emailError.stack,
+                                        details: emailError
+                                    });
                                 }
                                 
                                 // Clear user's cart after successful payment
@@ -162,7 +172,11 @@ exports.handler = async (event, context) => {
                                     console.log('Cart cleared for user:', user.id);
                                 }
                             } else {
-                                console.log('No user found for phone number:', phoneNumber);
+                                console.log('⚠️ No user found for transaction:', {
+                                    transactionId: transaction.id,
+                                    userId: transaction.user_id,
+                                    phoneNumber: phoneNumber
+                                });
                             }
                         }
                     } catch (dbError) {
