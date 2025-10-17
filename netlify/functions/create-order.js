@@ -149,17 +149,28 @@ exports.handler = async (event, context) => {
         }
         
         // Get user details for email
-        const { data: user } = await supabase
+        console.log('Fetching user details for email, userId:', userId);
+        const { data: user, error: userError } = await supabase
             .from('users')
             .select('email, full_name')
             .eq('id', userId)
             .single();
         
+        if (userError) {
+            console.error('Error fetching user for email:', userError);
+        }
+        
         // Send order confirmation email
         if (user && user.email) {
             try {
-                console.log('Sending order confirmation email to:', user.email);
-                await sendOrderConfirmationEmail(user.email, {
+                console.log('📧 Attempting to send order confirmation email to:', user.email);
+                console.log('Order details:', {
+                    orderNumber: order.order_number,
+                    amount: totalAmount,
+                    itemCount: cartItems.length
+                });
+                
+                const emailResult = await sendOrderConfirmationEmail(user.email, {
                     customerName: user.full_name,
                     orderNumber: order.order_number,
                     amount: totalAmount,
@@ -170,11 +181,19 @@ exports.handler = async (event, context) => {
                     })),
                     paymentPending: false // Order is created after payment completes
                 });
-                console.log('✅ Order confirmation email sent successfully');
+                
+                console.log('✅ Order confirmation email sent successfully:', emailResult);
             } catch (emailError) {
-                console.error('❌ Failed to send order confirmation email:', emailError);
+                console.error('❌ Failed to send order confirmation email:', {
+                    error: emailError.message,
+                    stack: emailError.stack,
+                    details: emailError
+                });
                 // Don't fail the order creation if email fails
             }
+        } else {
+            console.log('⚠️ No user email found, skipping order confirmation email');
+            console.log('User data:', user);
         }
         
         return {
