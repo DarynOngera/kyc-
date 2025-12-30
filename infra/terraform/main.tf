@@ -1,18 +1,3 @@
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
@@ -160,6 +145,8 @@ locals {
     app_port      = var.app_port
     node_version  = var.node_version
     branch        = var.repo_branch
+    ENV_DIR       = "/etc/${var.project_name}"
+    ENV_FILE      = "/etc/${var.project_name}/duka-replica.env"
   })
 }
 

@@ -6,13 +6,13 @@ variable "project_name" {
 variable "aws_region" {
   type        = string
   description = "AWS region"
-  default     = "eu-west-1"
+  default     = "us-east-1"
 }
 
 variable "availability_zone" {
   type        = string
   description = "Availability zone for the public subnet"
-  default     = "eu-west-1a"
+  default     = "us-east-1a"
 }
 
 variable "vpc_cidr" {
@@ -64,7 +64,7 @@ variable "repo_branch" {
 variable "app_dir" {
   type        = string
   description = "Directory inside repo where the node app lives"
-  default     = "duka-replica"
+  default     = "."
 }
 
 variable "app_port" {
