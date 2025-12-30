@@ -398,7 +398,7 @@
             submitBtn.innerHTML = 'Creating account<span class="loading"></span>';
 
             try {
-                const response = await fetch('/.netlify/functions/auth-signup', {
+                const response = await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

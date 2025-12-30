@@ -199,7 +199,13 @@ FROM transactions t
 LEFT JOIN users u ON t.user_id = u.id
 ORDER BY t.created_at DESC;
 
--- Grant access to service role (for Netlify functions)
+-- Helpful query for checking transactions
+SELECT t.*, u.full_name, u.email
+FROM transactions t
+LEFT JOIN users u ON t.user_id = u.id
+ORDER BY t.created_at DESC;
+
+-- Grant access to service role (for backend/server)
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;

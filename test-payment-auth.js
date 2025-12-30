@@ -17,7 +17,7 @@ const { spawn } = require('child_process');
 
 const curl = spawn('curl', [
   '-X', 'POST',
-  'http://localhost:8888/.netlify/functions/mpesa-payment',
+  'http://localhost:3000/api/mpesa/payment',
   '-H', 'Content-Type: application/json',
   '-H', `Authorization: Bearer ${testToken}`,
   '-d', JSON.stringify({

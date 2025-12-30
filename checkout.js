@@ -6,12 +6,8 @@
 // Configuration
 // ===================================
 const MPESA_CONFIG = {
-    // Netlify Function endpoint
-    // For local testing: http://localhost:8888/.netlify/functions/mpesa-payment
-    // For production: https://your-site.netlify.app/.netlify/functions/mpesa-payment
-    apiEndpoint: window.location.hostname === 'localhost' 
-        ? 'http://localhost:8888/.netlify/functions/mpesa-payment'
-        : '/.netlify/functions/mpesa-payment'
+
+    apiEndpoint: '/api/mpesa/payment'
 };
 
 // ===================================
@@ -199,7 +195,7 @@ async function pollPaymentStatus(checkoutRequestId, attemptCount) {
     
     try {
         const response = await fetch(
-            `/.netlify/functions/transaction-status?checkoutRequestId=${checkoutRequestId}`
+            `/api/transactions/status?checkoutRequestId=${checkoutRequestId}`
         );
         
         if (!response.ok) {
@@ -254,7 +250,7 @@ async function createOrder(transactionData) {
         }
         
         // Create order with transaction data
-        const response = await fetch('/.netlify/functions/create-order', {
+        const response = await fetch('/api/orders/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

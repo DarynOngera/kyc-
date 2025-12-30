@@ -1,6 +1,6 @@
 # KejaYaCapo Duka - E-Commerce Store with M-Pesa Integration
 
-A modern, full-featured e-commerce store for KejaYaCapo with integrated M-Pesa payment processing via Safaricom Daraja API. Built with vanilla JavaScript and deployed serverlessly on Netlify.
+A modern, full-featured e-commerce store for KejaYaCapo with integrated M-Pesa payment processing via Safaricom Daraja API. Built with vanilla JavaScript and served by an Express API.
 
 ## 📁 Project Structure
 
@@ -14,13 +14,15 @@ duka-replica/
 ├── cart.js                         # Cart functionality
 ├── checkout.js                     # Checkout & payment
 ├── product-detail.js               # Product page logic
-├── netlify/
-│   └── functions/
-│       ├── mpesa-payment.js        # M-Pesa STK Push handler
-│       └── mpesa-callback.js       # Payment callback handler
+├── api/
+│   ├── auth/                       # Auth handlers
+│   ├── mpesa/                      # M-Pesa handlers
+│   ├── orders/                     # Order handlers
+│   ├── transactions/               # Transaction handlers
+│   └── utils/                      # Shared utilities (supabase, email)
 ├── products/                       # Individual product pages
 ├── assets/                         # Images and media
-├── netlify.toml                    # Netlify configuration
+├── infra/terraform/                # Terraform (AWS EC2) deployment
 ├── package.json                    # Dependencies
 └── .env                            # Environment variables (not committed)
 ```
@@ -67,41 +69,19 @@ duka-replica/
 # Install dependencies
 npm install
 
-# Run local Netlify development server
-npx netlify dev
+# Run local development server
+npm run dev
 ```
 
-Visit `http://localhost:8888` - M-Pesa functions will work locally!
+Visit `http://localhost:3000` - API endpoints are served under `/api/*`.
 
-### Deploy to Netlify via GitHub
+### Deploy to AWS EC2
 
-**See detailed guide:** [GITHUB_NETLIFY_DEPLOY.md](GITHUB_NETLIFY_DEPLOY.md)
+Terraform deployment is provided in `infra/terraform/`.
 
-**Quick steps:**
+See:
 
-1. **Push to GitHub**
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/kejayacapo-duka.git
-git push -u origin main
-```
-
-2. **Connect to Netlify**
-   - Go to https://app.netlify.com
-   - Click "Add new site" → "Import from GitHub"
-   - Select your repository
-   - Deploy!
-
-3. **Add Environment Variables** in Netlify dashboard:
-   - `MPESA_CONSUMER_KEY`
-   - `MPESA_CONSUMER_SECRET`
-   - `MPESA_SHORTCODE`
-   - `MPESA_PASSKEY`
-   - `MPESA_CALLBACK_URL`
-
-4. **Done!** Your site auto-deploys on every push 🎉
+- `infra/terraform/README.md`
 
 ## 🎨 Customization
 
@@ -248,11 +228,9 @@ All code is thoroughly commented:
 
 ## 📚 Documentation
 
-- **[GITHUB_NETLIFY_DEPLOY.md](GITHUB_NETLIFY_DEPLOY.md)** - Deploy via GitHub (recommended)
-- **[NETLIFY_SETUP.md](NETLIFY_SETUP.md)** - Manual Netlify setup
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick reference commands
 - **[MPESA_BACKEND_GUIDE.md](MPESA_BACKEND_GUIDE.md)** - M-Pesa API details
-- **[SERVERLESS_DEPLOYMENT.md](SERVERLESS_DEPLOYMENT.md)** - Serverless options
+- **`infra/terraform/README.md`** - AWS EC2 deployment via Terraform
 
 ## 🚧 Future Enhancements
 

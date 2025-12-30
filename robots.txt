@@ -9,5 +9,5 @@ Allow: /
 Sitemap: https://kejayacapo.shop/sitemap.xml
 
 # Block all crawlers if accessed via CDN domains
-# This section will be active when accessed via netlify.app or other CDN URLs
+# This section will be active when accessed via alternate hostnames or other CDN URLs
 # Note: You may need to configure this at the CDN level for full effectiveness

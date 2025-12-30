@@ -120,7 +120,7 @@ async function testSTKPush() {
         } catch (error) {
             log(`   ✗ Callback URL not accessible: ${error.message}`, 'red');
             log(`   ⚠ M-Pesa requires callback to be publicly accessible`, 'yellow');
-            log(`   For local testing, use ngrok or deploy to Netlify`, 'yellow');
+            log(`   For local testing, use ngrok or deploy to your server`, 'yellow');
         }
     } else {
         log('   ✗ No callback URL configured', 'red');
@@ -177,7 +177,7 @@ async function testSTKPush() {
         PartyA: parseInt(phoneNumber),
         PartyB: parseInt(config.shortcode),
         PhoneNumber: parseInt(phoneNumber),
-        CallBackURL: config.callbackURL || 'https://kejayacapo.netlify.app/.netlify/functions/mpesa-callback',
+        CallBackURL: config.callbackURL || 'http://localhost:3000/api/mpesa/callback',
         AccountReference: 'TestPayment',
         TransactionDesc: 'Test STK Push'
     };
@@ -211,7 +211,7 @@ async function testSTKPush() {
             log('   1. Check your phone for STK push prompt', 'yellow');
             log('   2. Enter your M-Pesa PIN', 'yellow');
             log('   3. M-Pesa will send callback to your server', 'yellow');
-            log('   4. Check Netlify function logs for callback', 'yellow');
+            log('   4. Check your server logs for callback', 'yellow');
             log('');
             log('Tracking Info:', 'bright');
             log(`   CheckoutRequestID: ${response.data.CheckoutRequestID}`, 'cyan');
