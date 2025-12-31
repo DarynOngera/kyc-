@@ -5,7 +5,16 @@ async function verifyEmail(req, res) {
     try {
         const { email, token } = req.query || {};
 
+        const acceptHeader = String(req.headers.accept || '');
+        const wantsHtml = acceptHeader.includes('text/html');
+
+        function redirectToLogin(status, message) {
+            const location = `/login.html?verified=${encodeURIComponent(status)}${message ? `&message=${encodeURIComponent(message)}` : ''}`;
+            return res.redirect(302, location);
+        }
+
         if (!email || !token) {
+            if (wantsHtml) return redirectToLogin('missing', 'Missing email or token');
             return res.status(400).json({ error: 'Missing email or token' });
         }
 
@@ -22,20 +31,24 @@ async function verifyEmail(req, res) {
 
         if (error) {
             console.error('Supabase error:', error);
+            if (wantsHtml) return redirectToLogin('error', 'Failed to verify email');
             return res.status(500).json({ error: 'Failed to verify email' });
         }
 
         if (!user || !user.email_verification_token_hash) {
+            if (wantsHtml) return redirectToLogin('invalid', 'Invalid or expired verification link');
             return res.status(400).json({ error: 'Invalid or expired verification link' });
         }
 
         if (user.email_verification_token_hash !== tokenHash) {
+            if (wantsHtml) return redirectToLogin('invalid', 'Invalid or expired verification link');
             return res.status(400).json({ error: 'Invalid or expired verification link' });
         }
 
         if (user.email_verification_expires_at) {
             const expiresAt = new Date(user.email_verification_expires_at);
             if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+                if (wantsHtml) return redirectToLogin('expired', 'Invalid or expired verification link');
                 return res.status(400).json({ error: 'Invalid or expired verification link' });
             }
         }
@@ -52,8 +65,11 @@ async function verifyEmail(req, res) {
 
         if (updateError) {
             console.error('Supabase error:', updateError);
+            if (wantsHtml) return redirectToLogin('error', 'Failed to verify email');
             return res.status(500).json({ error: 'Failed to verify email' });
         }
+
+        if (wantsHtml) return redirectToLogin('success');
 
         return res.status(200).json({
             success: true,
@@ -61,6 +77,10 @@ async function verifyEmail(req, res) {
         });
     } catch (err) {
         console.error('Verify email error:', err);
+        const acceptHeader = String(req.headers.accept || '');
+        if (acceptHeader.includes('text/html')) {
+            return res.redirect(302, `/login.html?verified=error&message=${encodeURIComponent('Internal server error')}`);
+        }
         return res.status(500).json({ error: 'Internal server error' });
     }
 }
