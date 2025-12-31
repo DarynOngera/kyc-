@@ -14,6 +14,10 @@ jobs:
   node-ci:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: duka-replica
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,16 +27,16 @@ jobs:
         with:
           node-version: 18
           cache: npm
-          cache-dependency-path: duka-replica/package-lock.json
+          cache-dependency-path: |
+            duka-replica/package-lock.json
+            **/package-lock.json
 
       - name: Install dependencies
-        working-directory: duka-replica
         run: npm ci
 
       - name: Basic Node sanity check
         run: node -v
 
       - name: Start server (smoke test)
-        working-directory: duka-replica
         run: |
           timeout 8s npm start || true
