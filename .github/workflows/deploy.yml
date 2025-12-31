@@ -30,7 +30,11 @@ jobs:
             cd /opt/kejayacapo-duka/repo
             git fetch --all
             git reset --hard origin/main
-            cd /opt/kejayacapo-duka/repo/duka-replica
+            if [ ! -f /opt/kejayacapo-duka/repo/package.json ]; then
+              echo "/opt/kejayacapo-duka/repo/package.json not found (unexpected repo layout)"
+              ls -la /opt/kejayacapo-duka/repo || true
+              exit 1
+            fi
             npm ci --omit=dev
             sudo systemctl start kejayacapo-duka
             sudo systemctl --no-pager --full status kejayacapo-duka | head -n 80
