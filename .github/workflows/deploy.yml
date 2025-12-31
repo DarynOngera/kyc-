@@ -1,0 +1,36 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          script: |
+            set -e
+            sudo systemctl stop kejayacapo-duka || true
+            if [ ! -d /opt/kejayacapo-duka/repo/.git ]; then
+              echo "/opt/kejayacapo-duka/repo is missing or not a git repo"
+              exit 1
+            fi
+            cd /opt/kejayacapo-duka/repo
+            git fetch --all
+            git reset --hard origin/main
+            cd /opt/kejayacapo-duka/repo/duka-replica
+            npm ci --omit=dev
+            sudo systemctl start kejayacapo-duka
+            sudo systemctl --no-pager --full status kejayacapo-duka | head -n 80
