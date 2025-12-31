@@ -23,13 +23,16 @@ jobs:
         with:
           node-version: 18
           cache: npm
+          cache-dependency-path: duka-replica/package-lock.json
 
       - name: Install dependencies
+        working-directory: duka-replica
         run: npm ci
 
       - name: Basic Node sanity check
         run: node -v
 
       - name: Start server (smoke test)
+        working-directory: duka-replica
         run: |
           timeout 8s npm start || true
