@@ -10,16 +10,28 @@ async function login(req, res) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
+
         const supabase = getSupabaseClient();
 
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
-            .eq('email', email.toLowerCase())
+            .eq('email', normalizedEmail)
             .single();
 
         if (error || !user) {
             return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        if (user.is_active === false) {
+            return res.status(403).json({
+                error: 'Email not verified. Please check your inbox for the verification link.'
+            });
         }
 
         const isValidPassword = await bcrypt.compare(password, user.password_hash);

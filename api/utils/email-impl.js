@@ -60,6 +60,68 @@ async function sendOrderConfirmationEmail(to, data) {
     return result;
 }
 
+async function sendEmailVerificationEmail(to, data) {
+    const resend = getResendClient();
+    const fromEmail = process.env.FROM_EMAIL || 'orders@kejayacapo.shop';
+
+    const result = await resend.emails.send({
+        from: fromEmail,
+        to,
+        subject: 'Verify your email - KejaYaCapo',
+        html: generateEmailVerificationHTML(data)
+    });
+
+    return result;
+}
+
+function generateEmailVerificationHTML(data) {
+    const { customerName, verifyUrl } = data;
+
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+                <tr>
+                    <td align="center">
+                        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; max-width: 600px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <tr>
+                                <td style="background-color: #000000; padding: 40px 30px; text-align: center;">
+                                    <h1 style="margin: 0; color: #ffffff; font-size: 42px; font-weight: 300; letter-spacing: 2px;">KEJAYACAPO</h1>
+                                    <p style="margin: 8px 0 0 0; color: #ffffff; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;">A CRTV AGNC</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 40px 30px 20px 30px; border-bottom: 2px solid #000000;">
+                                    <h2 style="margin: 0; font-size: 24px; font-weight: 400; text-transform: uppercase; letter-spacing: 1px;">Verify your email</h2>
+                                    <p style="margin: 10px 0 0 0; color: #666666; font-size: 14px;">Hi ${customerName || 'there'}, confirm your email to activate your account.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 30px; text-align: center;">
+                                    <a href="${verifyUrl}" style="display: inline-block; background: #000000; color: #ffffff; padding: 14px 22px; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Verify Email</a>
+                                    <p style="margin: 20px 0 0 0; color: #666666; font-size: 13px; line-height: 1.6;">If the button doesn't work, copy and paste this link:</p>
+                                    <p style="margin: 8px 0 0 0; font-size: 12px; word-break: break-all;"><a href="${verifyUrl}" style="color: #000000; text-decoration: underline;">${verifyUrl}</a></p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="background-color: #000000; padding: 22px 30px; text-align: center;">
+                                    <p style="margin: 0; color: #ffffff; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;">&copy; ${new Date().getFullYear()} KejaYaCapo</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+    `;
+}
+
 function generateTransactionEmailHTML(data) {
     const {
         customerName,
@@ -471,7 +533,9 @@ module.exports = {
     sendTransactionEmail,
     sendAdminNotification,
     sendOrderConfirmationEmail,
+    sendEmailVerificationEmail,
     generateTransactionEmailHTML,
     generateAdminNotificationHTML,
-    generateOrderConfirmationHTML
+    generateOrderConfirmationHTML,
+    generateEmailVerificationHTML
 };
