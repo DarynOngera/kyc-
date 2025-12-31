@@ -25,6 +25,9 @@ async function login(req, res) {
             .single();
 
         if (error || !user) {
+            if (error) {
+                console.error('Supabase error:', error);
+            }
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
