@@ -22,6 +22,10 @@ async function signup(req, res) {
             return res.status(400).json({ error: 'Invalid email format' });
         }
 
+        if (!normalizedEmail.endsWith('@gmail.com')) {
+            return res.status(400).json({ error: 'Only Gmail addresses are allowed' });
+        }
+
         if (password.length < 8) {
             return res.status(400).json({ error: 'Password must be at least 8 characters' });
         }
