@@ -45,7 +45,7 @@ async function getAccessToken() {
 
     const auth = Buffer.from(`${cleanKey}:${cleanSecret}`).toString('base64');
 
-    console.log('Attempting token request with key length:', cleanKey.length, 'secret length:', cleanSecret.length);
+    console.log('Attempting M-Pesa access token request');
 
     const baseURL = getMpesaBaseURL();
 
@@ -59,21 +59,27 @@ async function getAccessToken() {
         console.log('Token obtained successfully');
         return response.data.access_token;
     } catch (error) {
-        console.error('Token error details:', {
+        console.error('M-Pesa token request failed:', {
             status: error.response?.status,
             statusText: error.response?.statusText,
             data: error.response?.data,
-            consumerKeyLength: cleanKey?.length,
-            consumerSecretLength: cleanSecret?.length,
-            keyFirstChars: cleanKey?.substring(0, 5),
-            keyLastChars: cleanKey?.substring(cleanKey.length - 5)
+            message: error.message
         });
 
-        if (error.response?.status === 400) {
-            throw new Error('Invalid M-Pesa credentials. Please verify your MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET are correct for the sandbox environment.');
+        const status = error.response?.status;
+        if (status === 400 || status === 401 || status === 403) {
+            const e = new Error('M-Pesa authentication failed');
+            e.code = 'MPESA_AUTH_FAILED';
+            e.httpStatus = 502;
+            e.mpesa = { status, data: error.response?.data };
+            throw e;
         }
 
-        throw new Error(`Failed to get access token: ${error.response?.data?.error_description || error.message}`);
+        const e = new Error('Failed to get M-Pesa access token');
+        e.code = 'MPESA_TOKEN_FAILED';
+        e.httpStatus = 502;
+        e.mpesa = { status, data: error.response?.data };
+        throw e;
     }
 }
 
@@ -82,7 +88,7 @@ async function payment(req, res) {
         console.error('Missing M-Pesa credentials in environment variables');
         return res.status(500).json({
             error: 'Server configuration error',
-            message: 'M-Pesa credentials not configured. Please set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET.'
+            message: 'Payment service is not configured.'
         });
     }
 
@@ -193,21 +199,32 @@ async function payment(req, res) {
 
         return res.status(200).json(response.data);
     } catch (error) {
+        const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
         console.error('Payment error:', {
+            requestId,
+            code: error.code,
             message: error.message,
-            response: error.response?.data,
+            httpStatus: error.httpStatus,
+            mpesaStatus: error.response?.status || error.mpesa?.status,
+            mpesaData: error.response?.data || error.mpesa?.data,
             stack: error.stack
         });
 
-        const errorMessage = error.response?.data?.errorMessage
-            || error.response?.data?.error
-            || error.message
-            || 'Unknown error occurred';
+        const status = Number(error.httpStatus) || 500;
 
-        return res.status(500).json({
+        if (error.code === 'MPESA_AUTH_FAILED') {
+            return res.status(status).json({
+                error: 'Payment failed',
+                message: 'Payment service is temporarily unavailable. Please try again later.',
+                requestId
+            });
+        }
+
+        return res.status(status).json({
             error: 'Payment failed',
-            message: errorMessage,
-            details: error.response?.data || null
+            message: 'Payment request failed. Please try again later.',
+            requestId
         });
     }
 }
