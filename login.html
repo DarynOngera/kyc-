@@ -276,6 +276,11 @@
                 return;
             }
 
+            if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                showError('email', 'Please enter a valid email address');
+                return;
+            }
+
             if (!password) {
                 showError('password', 'Password is required');
                 return;

@@ -22,6 +22,7 @@ app.use(express.static(__dirname)); // Serve static files
 // Import API handlers (native Express)
 const authLogin = require('./api/auth/login');
 const authSignup = require('./api/auth/signup');
+const authVerifyEmail = require('./api/auth/verify-email');
 const mpesaPayment = require('./api/mpesa/payment');
 const mpesaCallback = require('./api/mpesa/callback');
 const createOrder = require('./api/orders/create');
@@ -30,6 +31,7 @@ const transactionStatus = require('./api/transactions/status');
 // API Routes
 app.post('/api/auth/login', authLogin);
 app.post('/api/auth/signup', authSignup);
+app.get('/api/auth/verify-email', authVerifyEmail);
 app.post('/api/mpesa/payment', mpesaPayment);
 app.post('/api/mpesa/callback', mpesaCallback);
 app.post('/api/orders/create', createOrder);
