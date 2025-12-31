@@ -414,12 +414,9 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    showAlert('Account created successfully! Redirecting to login...', 'success');
-
-                    // Redirect to login after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = '/login.html';
-                    }, 2000);
+                    showAlert('Account created. We sent a verification email to your Gmail. Please click the verification link to activate your account. Check your spam/junk folder too.', 'success');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account';
                 } else {
                     showAlert(data.error || 'Signup failed. Please try again.');
                     submitBtn.disabled = false;
