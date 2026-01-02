@@ -6,8 +6,8 @@ function getMpesaBaseURL() {
         ? 'https://api.safaricom.co.ke'
         : 'https://sandbox.safaricom.co.ke';
 
-    console.log(`🌍 M-Pesa Environment: ${environment.toUpperCase()}`);
-    console.log(`📡 Using base URL: ${baseURL}`);
+    console.log(` M-Pesa Environment: ${environment.toUpperCase()}`);
+    console.log(` Using base URL: ${baseURL}`);
 
     return baseURL;
 }
@@ -180,7 +180,7 @@ async function payment(req, res) {
                     ]);
 
                 if (error) {
-                    console.error('❌ DATABASE INSERT FAILED:', {
+                    console.error('DATABASE INSERT FAILED:', {
                         error: error,
                         message: error.message,
                         details: error.details,
@@ -189,7 +189,7 @@ async function payment(req, res) {
                     });
                 }
             } catch (dbError) {
-                console.error('❌ Failed to create initial transaction record:', {
+                console.error('Failed to create initial transaction record:', {
                     name: dbError.name,
                     message: dbError.message,
                     stack: dbError.stack
