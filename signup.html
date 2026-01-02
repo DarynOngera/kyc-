@@ -414,7 +414,7 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    showAlert('Account created. We sent a verification email to your Gmail. Please click the verification link to activate your account. Check your spam/junk folder too.', 'success');
+                    showAlert('Account created. Please check your email for verification instructions.', 'success');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Create Account';
                 } else {
