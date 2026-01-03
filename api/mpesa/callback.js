@@ -55,7 +55,7 @@ async function callback(req, res) {
             const { ResultCode, ResultDesc, CallbackMetadata, CheckoutRequestID, MerchantRequestID } = Body.stkCallback;
 
             if (ResultCode === 0) {
-                console.log('✅ Payment successful!');
+                console.log('Payment successful!');
 
                 if (CallbackMetadata && CallbackMetadata.Item) {
                     const metadata = CallbackMetadata.Item;
