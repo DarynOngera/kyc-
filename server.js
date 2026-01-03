@@ -68,9 +68,9 @@ app.use((err, req, res, next) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📱 M-Pesa Environment: ${process.env.MPESA_ENVIRONMENT || 'sandbox'}`);
-    console.log(`🔗 Static IP: Check AWS Console for Elastic IP`);
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`M-Pesa Environment: ${process.env.MPESA_ENVIRONMENT || 'sandbox'}`);
+    console.log(`Static IP: Check AWS Console for Elastic IP`);
 });
 
 // Graceful shutdown
