@@ -24,18 +24,11 @@ function generateTimestamp() {
     return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
 
-//function generatePassword(shortCode, passkey, timestamp) {
-  //  const str = shortCode + passkey + timestamp;
-    //return Buffer.from(str).toString('base64');
-//}
-
 function generatePassword(shortCode, passkey, timestamp) {
-    const data = `${shortCode}${timestamp}`;
-    return crypto
-        .createHmac('sha256', passkey)
-        .update(data)
-        .digest('base64');
+    const str = shortCode + passkey + timestamp;
+    return Buffer.from(str).toString('base64');
 }
+
 
 async function getAccessToken() {
     const consumerKey = process.env.MPESA_CONSUMER_KEY;
