@@ -27,6 +27,7 @@ const mpesaPayment = require('./api/mpesa/payment');
 const mpesaCallback = require('./api/mpesa/callback');
 const createOrder = require('./api/orders/create');
 const transactionStatus = require('./api/transactions/status');
+const bankCreditIpn = require('./api/ipn/bank-credit');
 
 // API Routes
 app.post('/api/auth/login', authLogin);
@@ -36,6 +37,7 @@ app.post('/api/mpesa/payment', mpesaPayment);
 app.post('/api/mpesa/callback', mpesaCallback);
 app.post('/api/orders/create', createOrder);
 app.get('/api/transactions/status', transactionStatus);
+app.post('/api/ipn/bank/credit', bankCreditIpn);
 
 // Health check
 app.get('/api/health', (req, res) => {

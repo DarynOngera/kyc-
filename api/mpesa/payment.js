@@ -145,9 +145,16 @@ async function payment(req, res) {
             TransactionDesc: 'Payment for KejaYaCapo Order'
         };
 
-        console.log('Request body prepared:', JSON.stringify(requestBody, null, 2));
+       console.log('STK push initiated', {
+           amount,
+           phoneNumber,
+           shortcode: process.env.MPESA_SHORTCODE
+       });
+
 
         const baseURL = getMpesaBaseURL();
+
+        console.log('Making request to:', `${baseURL}/mpesa/stkpush/v1/processrequest`);
 
         const response = await axios.post(
             `${baseURL}/mpesa/stkpush/v1/processrequest`,
