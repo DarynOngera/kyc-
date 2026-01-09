@@ -1,66 +1,93 @@
 const axios = require('axios');
 const crypto = require('crypto');
 
- let coopTokenCache = {
-     accessToken: null,
-     expiresAtMs: 0
- };
+let coopTokenCache = {
+    accessToken: null,
+    expiresAtMs: 0
+};
 
- function getPaymentProvider() {
-     return (process.env.PAYMENT_PROVIDER || 'mpesa').toLowerCase();
- }
+function getPaymentProvider() {
+    return (process.env.PAYMENT_PROVIDER || 'mpesa').toLowerCase();
+}
 
- function maskPhone(phoneNumber) {
-     const s = phoneNumber == null ? '' : String(phoneNumber);
-     if (s.length <= 5) return s;
-     return `${s.slice(0, 3)}***${s.slice(-2)}`;
- }
+function maskPhone(phoneNumber) {
+    const s = phoneNumber == null ? '' : String(phoneNumber);
+    if (s.length <= 5) return s;
+    return `${s.slice(0, 3)}***${s.slice(-2)}`;
+}
 
- function requireEnv(name) {
-     const v = process.env[name];
-     if (!v) throw new Error(`${name} not configured`);
-     return v;
- }
+function requireEnv(name) {
+    const v = process.env[name];
+    if (!v) throw new Error(`${name} not configured`);
+    return v;
+}
 
- async function getCoopAccessToken() {
-     const now = Date.now();
-     if (coopTokenCache.accessToken && coopTokenCache.expiresAtMs && now < coopTokenCache.expiresAtMs - 10_000) {
-         return coopTokenCache.accessToken;
-     }
+function normalizeBasicAuth(value) {
+    const s = (value || '').trim();
+    if (!s) return s;
+    if (/^basic\s+/i.test(s)) return s.replace(/^basic\s+/i, '').trim();
+    return s;
+}
 
-     const basicAuth = requireEnv('COOP_BASIC_AUTH').trim();
+async function getCoopAccessToken() {
+    const now = Date.now();
+    if (coopTokenCache.accessToken && coopTokenCache.expiresAtMs && now < coopTokenCache.expiresAtMs - 10_000) {
+        return coopTokenCache.accessToken;
+    }
 
-     const resp = await axios.post(
-         'https://openapi.co-opbank.co.ke/token',
-         'grant_type=client_credentials',
-         {
-             headers: {
-                 Authorization: `Basic ${basicAuth}`,
-                 'Content-Type': 'application/x-www-form-urlencoded'
-             },
-             timeout: 30_000
-         }
-     );
+    const basicAuth = normalizeBasicAuth(requireEnv('COOP_BASIC_AUTH'));
 
-     const accessToken = resp.data?.access_token;
-     const expiresIn = Number(resp.data?.expires_in || 0);
-     if (!accessToken) {
-         const e = new Error('Failed to obtain Co-op access token');
-         e.code = 'COOP_TOKEN_FAILED';
-         e.httpStatus = 502;
-         e.coop = { status: resp.status, data: resp.data };
-         throw e;
-     }
+    let resp;
+    try {
+        resp = await axios.post(
+            'https://openapi.co-opbank.co.ke/token',
+            new URLSearchParams('grant_type=client_credentials').toString(),
+            {
+                headers: {
+                    Authorization: `Basic ${basicAuth}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    Accept: 'application/json'
+                },
+                timeout: 30_000
+            }
+        );
+    } catch (error) {
+        const status = error.response?.status;
+        const data = error.response?.data;
+        const e = new Error('Co-op authentication failed');
+        e.code = 'COOP_AUTH_FAILED';
+        e.httpStatus = 502;
+        e.coop = {
+            status,
+            data
+        };
+        if (status === 403) {
+            console.error('Co-op authentication failed with 403:', {
+                status,
+                data: JSON.stringify(data, null, 2).slice(0, 100)
+            });
+        }
+        throw e;
+    }
 
-     coopTokenCache.accessToken = accessToken;
-     coopTokenCache.expiresAtMs = now + (expiresIn > 0 ? expiresIn * 1000 : 55 * 60 * 1000);
-     return accessToken;
- }
+    const accessToken = resp.data?.access_token;
+    const expiresIn = Number(resp.data?.expires_in || 0);
+    if (!accessToken) {
+        const e = new Error('Failed to obtain Co-op access token');
+        e.code = 'COOP_TOKEN_FAILED';
+        e.httpStatus = 502;
+        e.coop = { status: resp.status, data: resp.data };
+        throw e;
+    }
 
- function buildMessageReference() {
-     return crypto.randomBytes(8).toString('hex').toUpperCase();
- }
+    coopTokenCache.accessToken = accessToken;
+    coopTokenCache.expiresAtMs = now + (expiresIn > 0 ? expiresIn * 1000 : 55 * 60 * 1000);
+    return accessToken;
+}
 
+function buildMessageReference() {
+    return crypto.randomBytes(8).toString('hex').toUpperCase();
+}
  async function coopStkPush({ phoneNumber, amount, accountReference }) {
      const token = await getCoopAccessToken();
      const callbackUrl = requireEnv('COOP_CALLBACK_URL');
@@ -372,6 +399,14 @@ async function payment(req, res) {
         });
 
         const status = Number(error.httpStatus) || 500;
+
+        if (error.code === 'COOP_AUTH_FAILED') {
+            return res.status(502).json({
+                error: 'Payment failed',
+                message: 'Co-op authentication blocked. Confirm Co-op has allowlisted the server outbound IP and that COOP_BASIC_AUTH is correct.',
+                requestId
+            });
+        }
 
         if (error.code === 'MPESA_AUTH_FAILED') {
             return res.status(status).json({
