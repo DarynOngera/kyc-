@@ -1,6 +1,108 @@
 const axios = require('axios');
 const crypto = require('crypto');
 
+ let coopTokenCache = {
+     accessToken: null,
+     expiresAtMs: 0
+ };
+
+ function getPaymentProvider() {
+     return (process.env.PAYMENT_PROVIDER || 'mpesa').toLowerCase();
+ }
+
+ function maskPhone(phoneNumber) {
+     const s = phoneNumber == null ? '' : String(phoneNumber);
+     if (s.length <= 5) return s;
+     return `${s.slice(0, 3)}***${s.slice(-2)}`;
+ }
+
+ function requireEnv(name) {
+     const v = process.env[name];
+     if (!v) throw new Error(`${name} not configured`);
+     return v;
+ }
+
+ async function getCoopAccessToken() {
+     const now = Date.now();
+     if (coopTokenCache.accessToken && coopTokenCache.expiresAtMs && now < coopTokenCache.expiresAtMs - 10_000) {
+         return coopTokenCache.accessToken;
+     }
+
+     const basicAuth = requireEnv('COOP_BASIC_AUTH').trim();
+
+     const resp = await axios.post(
+         'https://openapi.co-opbank.co.ke/token',
+         'grant_type=client_credentials',
+         {
+             headers: {
+                 Authorization: `Basic ${basicAuth}`,
+                 'Content-Type': 'application/x-www-form-urlencoded'
+             },
+             timeout: 30_000
+         }
+     );
+
+     const accessToken = resp.data?.access_token;
+     const expiresIn = Number(resp.data?.expires_in || 0);
+     if (!accessToken) {
+         const e = new Error('Failed to obtain Co-op access token');
+         e.code = 'COOP_TOKEN_FAILED';
+         e.httpStatus = 502;
+         e.coop = { status: resp.status, data: resp.data };
+         throw e;
+     }
+
+     coopTokenCache.accessToken = accessToken;
+     coopTokenCache.expiresAtMs = now + (expiresIn > 0 ? expiresIn * 1000 : 55 * 60 * 1000);
+     return accessToken;
+ }
+
+ function buildMessageReference() {
+     return crypto.randomBytes(8).toString('hex').toUpperCase();
+ }
+
+ async function coopStkPush({ phoneNumber, amount, accountReference }) {
+     const token = await getCoopAccessToken();
+     const callbackUrl = requireEnv('COOP_CALLBACK_URL');
+     const operatorCode = requireEnv('COOP_OPERATOR_CODE');
+
+     const messageReference = buildMessageReference();
+     const body = {
+         MessageReference: messageReference,
+         CallBackUrl: callbackUrl,
+         OperatorCode: operatorCode,
+         TransactionCurrency: 'KES',
+         MobileNumber: String(phoneNumber),
+         Narration: accountReference || 'KejaYaCapo',
+         Amount: Math.round(Number(amount)),
+         MessageDateTime: new Date().toISOString(),
+         OtherDetails: [
+             {
+                 Name: 'COOP',
+                 Value: 'STKTest'
+             }
+         ]
+     };
+
+     const resp = await axios.post(
+         'https://openapi.co-opbank.co.ke/FT/stk/1.0.0',
+         body,
+         {
+             headers: {
+                 Authorization: `Bearer ${token}`,
+                 'Content-Type': 'application/json'
+             },
+             timeout: 30_000
+         }
+     );
+
+     return {
+         provider: 'coop',
+         messageReference,
+         coop: resp.data
+     };
+ }
+
 function getMpesaBaseURL() {
     const environment = process.env.MPESA_ENVIRONMENT || 'sandbox';
     const baseURL = environment === 'production'
@@ -86,12 +188,16 @@ async function getAccessToken() {
 }
 
 async function payment(req, res) {
+    const provider = getPaymentProvider();
+
     if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
-        console.error('Missing M-Pesa credentials in environment variables');
-        return res.status(500).json({
-            error: 'Server configuration error',
-            message: 'Payment service is not configured.'
-        });
+        if (provider === 'mpesa') {
+            console.error('Missing M-Pesa credentials in environment variables');
+            return res.status(500).json({
+                error: 'Server configuration error',
+                message: 'Payment service is not configured.'
+            });
+        }
     }
 
     const { phoneNumber, amount, accountReference } = req.body || {};
@@ -117,6 +223,51 @@ async function payment(req, res) {
     console.log('Processing payment:', { phoneNumber, amount });
 
     try {
+        if (provider === 'coop') {
+            const coopResult = await coopStkPush({ phoneNumber, amount, accountReference });
+
+            try {
+                const { getSupabaseClient } = require('../utils/supabase');
+                const supabase = getSupabaseClient();
+
+                await supabase
+                    .from('transactions')
+                    .insert([
+                        {
+                            checkout_request_id: coopResult.messageReference,
+                            merchant_request_id: null,
+                            phone_number: String(phoneNumber),
+                            amount: amount,
+                            status: 'initiated',
+                            user_id: userId,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+            } catch (dbError) {
+                console.error('Failed to create initial transaction record:', {
+                    name: dbError.name,
+                    message: dbError.message,
+                    stack: dbError.stack
+                });
+            }
+
+            console.log('Co-op STK push initiated', {
+                amount,
+                phoneNumber: maskPhone(phoneNumber),
+                messageReference: coopResult.messageReference
+            });
+
+            return res.status(200).json({
+                CheckoutRequestID: coopResult.messageReference,
+                MerchantRequestID: null,
+                ResponseCode: '0',
+                ResponseDescription: 'Accepted',
+                CustomerMessage: 'STK push initiated',
+                provider: 'coop',
+                coop: coopResult.coop
+            });
+        }
+
         const token = await getAccessToken();
 
         const timestamp = generateTimestamp();

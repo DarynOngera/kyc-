@@ -262,6 +262,165 @@ async function callback(req, res) {
             }
         }
 
+        if (callbackData && callbackData.MessageReference) {
+            const {
+                MessageReference,
+                ResultCode,
+                ResultDesc,
+                Amount,
+                MobileNumber,
+                TransactionDate,
+                ReceiptNumber
+            } = callbackData;
+
+            const normalizedPhone = normalizeKenyanPhone(MobileNumber);
+            const status = Number(ResultCode) === 0 ? 'completed' : 'failed';
+
+            try {
+                const supabase = getSupabaseClient();
+
+                let transaction = null;
+                const { data: existingByRef } = await supabase
+                    .from('transactions')
+                    .select('*')
+                    .eq('checkout_request_id', MessageReference)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (existingByRef) transaction = existingByRef;
+
+                if (!transaction && normalizedPhone) {
+                    const { data: existingByPhone } = await supabase
+                        .from('transactions')
+                        .select('*')
+                        .eq('phone_number', normalizedPhone)
+                        .eq('status', 'initiated')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    if (existingByPhone) transaction = existingByPhone;
+                }
+
+                let transactionError = null;
+                if (transaction) {
+                    const { data: updatedTx, error } = await supabase
+                        .from('transactions')
+                        .update({
+                            mpesa_receipt: ReceiptNumber || null,
+                            amount: Amount ?? transaction.amount,
+                            phone_number: normalizedPhone || MobileNumber?.toString() || transaction.phone_number,
+                            transaction_date: TransactionDate ? new Date(TransactionDate).toISOString() : new Date().toISOString(),
+                            status,
+                            result_code: ResultCode,
+                            result_desc: ResultDesc,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', transaction.id)
+                        .select()
+                        .single();
+
+                    transactionError = error;
+                    if (!error) transaction = updatedTx;
+                } else {
+                    transactionError = new Error('Transaction not found for Co-op callback');
+                    console.error('⚠️ No transaction row matched Co-op callback:', {
+                        MessageReference,
+                        phoneNumber: normalizedPhone || MobileNumber
+                    });
+                }
+
+                if (transactionError) {
+                    console.error('Failed to log Co-op transaction:', transactionError);
+                } else if (status === 'completed') {
+                    let user = null;
+                    if (transaction.user_id) {
+                        const { data: userData } = await supabase
+                            .from('users')
+                            .select('*')
+                            .eq('id', transaction.user_id)
+                            .single();
+                        user = userData;
+                    }
+
+                    if (!user) {
+                        user = await findUserByPhone(supabase, normalizedPhone || MobileNumber);
+                        if (user && !transaction.user_id) {
+                            await supabase
+                                .from('transactions')
+                                .update({ user_id: user.id, updated_at: new Date().toISOString() })
+                                .eq('id', transaction.id);
+                        }
+                    }
+
+                    if (user) {
+                        const { data: cartItems } = await supabase
+                            .from('cart_items')
+                            .select('*, products(*)')
+                            .eq('user_id', user.id);
+
+                        const items = cartItems ? cartItems.map(item => ({
+                            name: item.products.name,
+                            quantity: item.quantity,
+                            price: item.products.price
+                        })) : null;
+
+                        try {
+                            await sendTransactionEmail(
+                                user.email,
+                                `Order Confirmation - ${ReceiptNumber || MessageReference}`,
+                                {
+                                    customerName: user.full_name,
+                                    orderId: ReceiptNumber || MessageReference,
+                                    amount: Amount,
+                                    mpesaReceipt: ReceiptNumber || MessageReference,
+                                    phoneNumber: (normalizedPhone || MobileNumber)?.toString(),
+                                    items,
+                                    status: 'completed'
+                                }
+                            );
+                        } catch (emailError) {
+                            console.error('❌ Failed to send customer email (Co-op):', {
+                                error: emailError.message,
+                                stack: emailError.stack,
+                                details: emailError
+                            });
+                        }
+
+                        try {
+                            await sendAdminNotification({
+                                customerName: user.full_name,
+                                customerEmail: user.email,
+                                orderId: ReceiptNumber || MessageReference,
+                                amount: Amount,
+                                mpesaReceipt: ReceiptNumber || MessageReference,
+                                phoneNumber: (normalizedPhone || MobileNumber)?.toString(),
+                                items
+                            });
+                        } catch (emailError) {
+                            console.error('❌ Failed to send admin notification (Co-op):', {
+                                error: emailError.message,
+                                stack: emailError.stack,
+                                details: emailError
+                            });
+                        }
+
+                        if (cartItems && cartItems.length > 0) {
+                            try {
+                                await supabase
+                                    .from('cart_items')
+                                    .delete()
+                                    .eq('user_id', user.id);
+                            } catch (cartError) {
+                                console.error('Failed to clear cart for user:', user.id, cartError);
+                            }
+                        }
+                    }
+                }
+            } catch (dbError) {
+                console.error('Co-op callback DB error:', dbError);
+            }
+        }
+
         return res.status(200).json({ ResultCode: 0, ResultDesc: 'Success' });
     } catch (error) {
         console.error('Callback error:', error);
