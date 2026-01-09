@@ -53,6 +53,17 @@ app.use('/api', (req, res) => {
     res.status(404).json({ error: 'Not found' });
 });
 
+// Internal-only test page (guarded by INTERNAL_TEST_TOKEN)
+app.get('/__internal/pay', (req, res) => {
+    const token = process.env.INTERNAL_TEST_TOKEN;
+    if (!token) return res.status(404).send('Not found');
+
+    const provided = String(req.query?.t || '');
+    if (!provided || provided !== token) return res.status(404).send('Not found');
+
+    return res.sendFile(path.join(__dirname, 'internal-test-payment.html'));
+});
+
 // Serve frontend
 app.get('*', (req, res) => {
     if (req.path.endsWith('.html') || req.path === '/') {
