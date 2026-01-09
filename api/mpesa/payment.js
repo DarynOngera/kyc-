@@ -88,19 +88,35 @@ async function getCoopAccessToken() {
 function buildMessageReference() {
     return crypto.randomBytes(8).toString('hex').toUpperCase();
 }
+
+ function normalizeNarration(accountReference) {
+     const s = (accountReference == null ? '' : String(accountReference)).trim();
+     const cleaned = s.replace(/\s+/g, '');
+     if (!cleaned) return '';
+
+     if (cleaned.length % 2 === 0) {
+         const half = cleaned.length / 2;
+         const left = cleaned.slice(0, half);
+         const right = cleaned.slice(half);
+         if (left && left === right) return left;
+     }
+
+     return cleaned;
+ }
  async function coopStkPush({ phoneNumber, amount, accountReference }) {
      const token = await getCoopAccessToken();
      const callbackUrl = requireEnv('COOP_CALLBACK_URL');
      const operatorCode = requireEnv('COOP_OPERATOR_CODE');
 
      const messageReference = buildMessageReference();
+     const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
      const body = {
          MessageReference: messageReference,
          CallBackUrl: callbackUrl,
          OperatorCode: operatorCode,
          TransactionCurrency: 'KES',
          MobileNumber: String(phoneNumber),
-         Narration: accountReference || 'KejaYaCapo',
+         Narration: narration,
          Amount: Math.round(Number(amount)),
          MessageDateTime: new Date().toISOString(),
          OtherDetails: [
