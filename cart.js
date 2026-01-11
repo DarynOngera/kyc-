@@ -98,7 +98,7 @@ function getProductImage(title) {
 // ===================================
 function calculateTotal(cart) {
     return cart.reduce((total, item) => {
-        const price = parseFloat(item.price.replace('$', ''));
+        const price = parseFloat(String(item.price).replace(/KSh\s?/i, '').replace(/,/g, ''));
         return total + (price * item.quantity);
     }, 0);
 }
@@ -111,8 +111,8 @@ function updateCartSummary(total) {
     const totalEl = document.querySelector('.total-amount');
     const checkoutBtn = document.querySelector('.checkout-btn');
 
-    if (subtotalEl) subtotalEl.textContent = `$${total.toFixed(2)}`;
-    if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+    if (subtotalEl) subtotalEl.textContent = `KSh ${Math.round(total).toLocaleString()}`;
+    if (totalEl) totalEl.textContent = `KSh ${Math.round(total).toLocaleString()}`;
     
     if (checkoutBtn) {
         checkoutBtn.disabled = total === 0;

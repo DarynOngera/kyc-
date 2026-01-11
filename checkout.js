@@ -19,15 +19,9 @@ function getCart() {
 
 function calculateTotal(cart) {
     return cart.reduce((total, item) => {
-        const price = parseFloat(item.price.replace('$', ''));
+        const price = parseFloat(String(item.price).replace(/KSh\s?/i, '').replace(/,/g, ''));
         return total + (price * item.quantity);
     }, 0);
-}
-
-// Convert USD to KES (approximate rate)
-function usdToKes(usd) {
-    const rate = 130; // Approximate conversion rate
-    return Math.round(usd * rate);
 }
 
 // ===================================
@@ -52,11 +46,10 @@ function displayOrderSummary() {
     `).join('');
 
     // Calculate and display total
-    const totalUSD = calculateTotal(cart);
-    const totalKES = usdToKes(totalUSD);
+    const totalKES = Math.round(calculateTotal(cart));
     
-    totalAmountEl.textContent = `KES ${totalKES.toLocaleString()}`;
-    totalAmountEl.dataset.amount = totalKES;
+    totalAmountEl.textContent = `KSh ${totalKES.toLocaleString()}`;
+    totalAmountEl.dataset.amount = String(totalKES);
 }
 
 // ===================================

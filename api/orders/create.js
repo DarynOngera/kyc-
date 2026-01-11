@@ -1,6 +1,17 @@
 const { getSupabaseClient } = require('../utils/supabase');
 const { sendOrderConfirmationEmail } = require('../utils/email');
 
+function parseKesAmount(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    const cleaned = String(value || '')
+        .replace(/KSh\s?/i, '')
+        .replace(/KES\s?/i, '')
+        .replace(/,/g, '')
+        .trim();
+    const n = parseFloat(cleaned);
+    return Number.isFinite(n) ? n : 0;
+}
+
 async function create(req, res) {
     try {
         const { transactionId, userId, cartItems } = req.body || {};
@@ -45,7 +56,7 @@ async function create(req, res) {
         const orderNumber = `KYC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
         const totalAmount = cartItems.reduce((sum, item) => {
-            return sum + (parseFloat(item.price) * item.quantity);
+            return sum + (parseKesAmount(item.price) * item.quantity);
         }, 0);
 
         const { data: order, error: orderError } = await supabase
@@ -75,8 +86,8 @@ async function create(req, res) {
             order_id: order.id,
             product_name: item.title || item.name,
             quantity: item.quantity,
-            unit_price: parseFloat(item.price),
-            subtotal: parseFloat(item.price) * item.quantity,
+            unit_price: parseKesAmount(item.price),
+            subtotal: parseKesAmount(item.price) * item.quantity,
             created_at: new Date().toISOString()
         }));
 
