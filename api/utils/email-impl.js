@@ -9,7 +9,25 @@ function getResendClient() {
 
         if (!apiKey) {
             throw new Error('Resend API key not configured');
-        }
+        }function parseMpesaDate(mpesaDateString) {
+    if (!mpesaDateString) return new Date().toISOString();
+
+    try {
+        const dateStr = mpesaDateString.toString();
+        const year = dateStr.substring(0, 4);
+        const month = dateStr.substring(4, 6);
+        const day = dateStr.substring(6, 8);
+        const hour = dateStr.substring(8, 10);
+        const minute = dateStr.substring(10, 12);
+        const second = dateStr.substring(12, 14);
+
+        const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}+03:00`;
+        return new Date(isoString).toISOString();
+    } catch (error) {
+        console.error('Error parsing M-Pesa date:', error);
+        return new Date().toISOString();
+    }
+}
 
         resend = new Resend(apiKey);
     }

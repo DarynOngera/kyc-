@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CSS Test</title>
+    <link rel="stylesheet" href="/styles.css?v=3">
+    <style>
+        body { padding: 40px; font-family: Arial; }
+        .test-box { padding: 20px; margin: 20px 0; border: 2px solid #000; }
+    </style>
+</head>
+<body>
+    <h1>CSS Loading Test</h1>
+    
+    <div class="test-box">
+        <h2>Test 1: Is CSS loading?</h2>
+        <p>If the header below has a border, CSS is loading.</p>
+    </div>
+    
+    <header class="site-header">
+        <div class="header-container">
+            <p>This should have header styles if CSS is loading</p>
+        </div>
+    </header>
+    
+    <div class="test-box">
+        <h2>Test 2: Product Detail Container</h2>
+        <div class="product-detail-container" style="min-height: 200px;">
+            <div style="background: lightblue; padding: 20px;">Column 1</div>
+            <div style="background: lightgreen; padding: 20px;">Column 2</div>
+            <div style="background: lightyellow; padding: 20px;">Column 3</div>
+        </div>
+        <p>If you see 3 columns above, flexbox is working!</p>
+    </div>
+    
+    <div class="test-box">
+        <h2>Instructions:</h2>
+        <ol>
+            <li>Press F12 to open DevTools</li>
+            <li>Go to Network tab</li>
+            <li>Refresh page (Ctrl+R)</li>
+            <li>Look for "styles.css" - does it show 200 or 404?</li>
+            <li>Go to Console tab - any errors?</li>
+        </ol>
+    </div>
+</body>
+</html>

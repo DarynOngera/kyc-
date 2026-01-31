@@ -17,7 +17,12 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
-app.use(express.static(__dirname)); // Serve static files
+
+// Serve static assets (keep HTML out of public root)
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/products', express.static(path.join(__dirname, 'products')));
+app.use('/docs', express.static(path.join(__dirname, 'docs')));
+app.use(express.static(__dirname, { extensions: [] }));
 
 // Import API handlers (native Express)
 const authLogin = require('./api/auth/login');
@@ -64,13 +69,35 @@ app.get('/__internal/pay', (req, res) => {
     return res.sendFile(path.join(__dirname, 'internal-test-payment.html'));
 });
 
-// Serve frontend
-app.get('*', (req, res) => {
-    if (req.path.endsWith('.html') || req.path === '/') {
-        res.sendFile(path.join(__dirname, req.path === '/' ? 'index.html' : req.path));
-    } else {
-        res.sendFile(path.join(__dirname, req.path));
-    }
+function sendView(res, relativePath) {
+    return res.sendFile(path.join(__dirname, 'views', relativePath));
+}
+
+// Block direct .html access (force pretty URLs)
+app.get(/.*\.html$/, (req, res) => {
+    return res.status(404).send('Not found');
+});
+
+// Pretty URL routes
+app.get('/', (req, res) => sendView(res, 'index.html'));
+app.get('/index', (req, res) => sendView(res, 'index.html'));
+app.get('/duka', (req, res) => sendView(res, 'duka.html'));
+app.get('/cart', (req, res) => sendView(res, 'cart.html'));
+app.get('/checkout', (req, res) => sendView(res, 'checkout.html'));
+app.get('/login', (req, res) => sendView(res, 'login.html'));
+app.get('/signup', (req, res) => sendView(res, 'signup.html'));
+app.get('/about', (req, res) => sendView(res, 'about.html'));
+app.get('/terms', (req, res) => sendView(res, 'terms.html'));
+app.get('/order-confirmation', (req, res) => sendView(res, 'order-confirmation.html'));
+
+// Product pages
+app.get('/products/:slug', (req, res) => {
+    return sendView(res, path.join('products', `${req.params.slug}.html`));
+});
+
+// Frontend 404
+app.use((req, res) => {
+    res.status(404).send('Not found');
 });
 
 // Error handler
