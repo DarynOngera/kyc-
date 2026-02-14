@@ -225,7 +225,7 @@ function initCheckout() {
             }
 
             // User is authenticated, proceed to checkout
-            window.location.href = '/checkout.html';
+            window.location.href = '/checkout';
         });
     }
 }
