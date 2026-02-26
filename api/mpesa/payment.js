@@ -1,5 +1,6 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const db = require('../utils/db');
 
 let coopTokenCache = {
     accessToken: null,
@@ -89,62 +90,63 @@ function buildMessageReference() {
     return crypto.randomBytes(8).toString('hex').toUpperCase();
 }
 
- function normalizeNarration(accountReference) {
-     const s = (accountReference == null ? '' : String(accountReference)).trim();
-     const cleaned = s.replace(/\s+/g, '');
-     if (!cleaned) return '';
+function normalizeNarration(accountReference) {
+    const s = (accountReference == null ? '' : String(accountReference)).trim();
+    const cleaned = s.replace(/\s+/g, '');
+    if (!cleaned) return '';
 
-     if (cleaned.length % 2 === 0) {
-         const half = cleaned.length / 2;
-         const left = cleaned.slice(0, half);
-         const right = cleaned.slice(half);
-         if (left && left === right) return left;
-     }
+    if (cleaned.length % 2 === 0) {
+        const half = cleaned.length / 2;
+        const left = cleaned.slice(0, half);
+        const right = cleaned.slice(half);
+        if (left && left === right) return left;
+    }
 
-     return cleaned;
- }
- async function coopStkPush({ phoneNumber, amount, accountReference }) {
-     const token = await getCoopAccessToken();
-     const callbackUrl = requireEnv('COOP_CALLBACK_URL');
-     const operatorCode = requireEnv('COOP_OPERATOR_CODE');
+    return cleaned;
+}
 
-     const messageReference = buildMessageReference();
-     const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
-     const body = {
-         MessageReference: messageReference,
-         CallBackUrl: callbackUrl,
-         OperatorCode: operatorCode,
-         TransactionCurrency: 'KES',
-         MobileNumber: String(phoneNumber),
-         Narration: narration,
-         Amount: Math.round(Number(amount)),
-         MessageDateTime: new Date().toISOString(),
-         OtherDetails: [
-             {
-                 Name: 'COOP',
-                 Value: 'STKTest'
-             }
-         ]
-     };
+async function coopStkPush({ phoneNumber, amount, accountReference }) {
+    const token = await getCoopAccessToken();
+    const callbackUrl = requireEnv('COOP_CALLBACK_URL');
+    const operatorCode = requireEnv('COOP_OPERATOR_CODE');
 
-     const resp = await axios.post(
-         'https://openapi.co-opbank.co.ke/FT/stk/1.0.0',
-         body,
-         {
-             headers: {
-                 Authorization: `Bearer ${token}`,
-                 'Content-Type': 'application/json'
-             },
-             timeout: 30_000
-         }
-     );
+    const messageReference = buildMessageReference();
+    const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
+    const body = {
+        MessageReference: messageReference,
+        CallBackUrl: callbackUrl,
+        OperatorCode: operatorCode,
+        TransactionCurrency: 'KES',
+        MobileNumber: String(phoneNumber),
+        Narration: narration,
+        Amount: Math.round(Number(amount)),
+        MessageDateTime: new Date().toISOString(),
+        OtherDetails: [
+            {
+                Name: 'COOP',
+                Value: 'STKTest'
+            }
+        ]
+    };
 
-     return {
-         provider: 'coop',
-         messageReference,
-         coop: resp.data
-     };
- }
+    const resp = await axios.post(
+        'https://openapi.co-opbank.co.ke/FT/stk/1.0.0',
+        body,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 30_000
+        }
+    );
+
+    return {
+        provider: 'coop',
+        messageReference,
+        coop: resp.data
+    };
+}
 
 function getMpesaBaseURL() {
     const environment = process.env.MPESA_ENVIRONMENT || 'sandbox';
@@ -173,7 +175,6 @@ function generatePassword(shortCode, passkey, timestamp) {
     const str = shortCode + passkey + timestamp;
     return Buffer.from(str).toString('base64');
 }
-
 
 async function getAccessToken() {
     const consumerKey = process.env.MPESA_CONSUMER_KEY;
@@ -270,22 +271,18 @@ async function payment(req, res) {
             const coopResult = await coopStkPush({ phoneNumber, amount, accountReference });
 
             try {
-                const { getSupabaseClient } = require('../utils/supabase');
-                const supabase = getSupabaseClient();
-
-                await supabase
-                    .from('transactions')
-                    .insert([
-                        {
-                            checkout_request_id: coopResult.messageReference,
-                            merchant_request_id: null,
-                            phone_number: String(phoneNumber),
-                            amount: amount,
-                            status: 'initiated',
-                            user_id: userId,
-                            created_at: new Date().toISOString()
-                        }
-                    ]);
+                await db.query(
+                    'INSERT INTO transactions (checkout_request_id, merchant_request_id, phone_number, amount, status, user_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+                    [
+                        coopResult.messageReference,
+                        null,
+                        String(phoneNumber),
+                        amount,
+                        'initiated',
+                        userId,
+                        new Date().toISOString()
+                    ]
+                );
             } catch (dbError) {
                 console.error('Failed to create initial transaction record:', {
                     name: dbError.name,
@@ -339,12 +336,11 @@ async function payment(req, res) {
             TransactionDesc: 'Payment for KejaYaCapo Order'
         };
 
-       console.log('STK push initiated', {
-           amount,
-           phoneNumber,
-           shortcode: process.env.MPESA_SHORTCODE
-       });
-
+        console.log('STK push initiated', {
+            amount,
+            phoneNumber,
+            shortcode: process.env.MPESA_SHORTCODE
+        });
 
         const baseURL = getMpesaBaseURL();
 
@@ -365,32 +361,18 @@ async function payment(req, res) {
 
         if (response.data.CheckoutRequestID) {
             try {
-                const { getSupabaseClient } = require('../utils/supabase');
-                const supabase = getSupabaseClient();
-
-                const { error } = await supabase
-                    .from('transactions')
-                    .insert([
-                        {
-                            checkout_request_id: response.data.CheckoutRequestID,
-                            merchant_request_id: response.data.MerchantRequestID,
-                            phone_number: String(phoneNumber),
-                            amount: amount,
-                            status: 'initiated',
-                            user_id: userId,
-                            created_at: new Date().toISOString()
-                        }
-                    ]);
-
-                if (error) {
-                    console.error('DATABASE INSERT FAILED:', {
-                        error: error,
-                        message: error.message,
-                        details: error.details,
-                        hint: error.hint,
-                        code: error.code
-                    });
-                }
+                await db.query(
+                    'INSERT INTO transactions (checkout_request_id, merchant_request_id, phone_number, amount, status, user_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+                    [
+                        response.data.CheckoutRequestID,
+                        response.data.MerchantRequestID,
+                        String(phoneNumber),
+                        amount,
+                        'initiated',
+                        userId,
+                        new Date().toISOString()
+                    ]
+                );
             } catch (dbError) {
                 console.error('Failed to create initial transaction record:', {
                     name: dbError.name,

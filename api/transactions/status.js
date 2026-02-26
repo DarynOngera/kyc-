@@ -1,4 +1,4 @@
-const { getSupabaseClient } = require('../utils/supabase');
+const db = require('../utils/db');
 
 async function status(req, res) {
     try {
@@ -8,17 +8,14 @@ async function status(req, res) {
             return res.status(400).json({ error: 'checkoutRequestId is required' });
         }
 
-        const supabase = getSupabaseClient();
-
-        const { data: transaction, error } = await supabase
-            .from('transactions')
-            .select('*')
-            .eq('checkout_request_id', checkoutRequestId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (error) {
+        let transaction = null;
+        try {
+            const result = await db.query(
+                'SELECT * FROM transactions WHERE checkout_request_id = $1 ORDER BY created_at DESC LIMIT 1',
+                [checkoutRequestId]
+            );
+            transaction = result.rows[0] || null;
+        } catch (error) {
             console.error('Database error:', error);
             return res.status(500).json({
                 error: 'Database error',

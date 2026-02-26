@@ -1,6 +1,6 @@
-const { getSupabaseClient } = require('../utils/supabase');
 const { sendTransactionEmail, sendAdminNotification } = require('../utils/email');
 const { normalizeKenyanPhone } = require('../utils/phone');
+const db = require('../utils/db');
 
 function parseMpesaDate(mpesaDateString) {
     if (!mpesaDateString) return new Date().toISOString();
@@ -22,7 +22,7 @@ function parseMpesaDate(mpesaDateString) {
     }
 }
 
-async function findUserByPhone(supabase, phoneNumber) {
+async function findUserByPhone(phoneNumber) {
     const normalized = normalizeKenyanPhone(phoneNumber);
     if (!normalized) return null;
 
@@ -33,11 +33,11 @@ async function findUserByPhone(supabase, phoneNumber) {
     ]));
 
     for (const candidate of candidates) {
-        const { data: userData } = await supabase
-            .from('users')
-            .select('*')
-            .eq('phone_number', candidate)
-            .maybeSingle();
+        const result = await db.query(
+            'SELECT * FROM users WHERE phone_number = $1 LIMIT 1',
+            [candidate]
+        );
+        const userData = result.rows[0];
         if (userData) return userData;
     }
 
@@ -72,61 +72,54 @@ async function callback(req, res) {
                     });
 
                     try {
-                        const supabase = getSupabaseClient();
-
                         const normalizedPhone = normalizeKenyanPhone(phoneNumber);
 
                         let transaction = null;
-                        const { data: existingByCheckout } = await supabase
-                            .from('transactions')
-                            .select('*')
-                            .eq('checkout_request_id', CheckoutRequestID)
-                            .maybeSingle();
-                        if (existingByCheckout) transaction = existingByCheckout;
+                        {
+                            const r = await db.query(
+                                'SELECT * FROM transactions WHERE checkout_request_id = $1 ORDER BY created_at DESC LIMIT 1',
+                                [CheckoutRequestID]
+                            );
+                            transaction = r.rows[0] || null;
+                        }
 
                         if (!transaction && MerchantRequestID) {
-                            const { data: existingByMerchant } = await supabase
-                                .from('transactions')
-                                .select('*')
-                                .eq('merchant_request_id', MerchantRequestID)
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                            if (existingByMerchant) transaction = existingByMerchant;
+                            const r = await db.query(
+                                'SELECT * FROM transactions WHERE merchant_request_id = $1 ORDER BY created_at DESC LIMIT 1',
+                                [MerchantRequestID]
+                            );
+                            transaction = r.rows[0] || null;
                         }
 
                         if (!transaction && normalizedPhone) {
-                            const { data: existingByPhone } = await supabase
-                                .from('transactions')
-                                .select('*')
-                                .eq('phone_number', normalizedPhone)
-                                .eq('status', 'initiated')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                            if (existingByPhone) transaction = existingByPhone;
+                            const r = await db.query(
+                                "SELECT * FROM transactions WHERE phone_number = $1 AND status = 'initiated' ORDER BY created_at DESC LIMIT 1",
+                                [normalizedPhone]
+                            );
+                            transaction = r.rows[0] || null;
                         }
 
                         let transactionError = null;
                         if (transaction) {
-                            const { data: updatedTx, error } = await supabase
-                                .from('transactions')
-                                .update({
-                                    mpesa_receipt: mpesaReceiptNumber,
-                                    amount: amount,
-                                    phone_number: normalizedPhone || phoneNumber?.toString(),
-                                    transaction_date: parseMpesaDate(transactionDate),
-                                    status: 'completed',
-                                    result_code: ResultCode,
-                                    result_desc: ResultDesc,
-                                    updated_at: new Date().toISOString()
-                                })
-                                .eq('id', transaction.id)
-                                .select()
-                                .single();
-
-                            transactionError = error;
-                            if (!error) transaction = updatedTx;
+                            try {
+                                const u = await db.query(
+                                    'UPDATE transactions SET mpesa_receipt = $1, amount = $2, phone_number = $3, transaction_date = $4, status = $5, result_code = $6, result_desc = $7, updated_at = $8 WHERE id = $9 RETURNING *',
+                                    [
+                                        mpesaReceiptNumber,
+                                        amount,
+                                        normalizedPhone || phoneNumber?.toString(),
+                                        parseMpesaDate(transactionDate),
+                                        'completed',
+                                        ResultCode,
+                                        ResultDesc,
+                                        new Date().toISOString(),
+                                        transaction.id
+                                    ]
+                                );
+                                transaction = u.rows[0] || transaction;
+                            } catch (e) {
+                                transactionError = e;
+                            }
                         } else {
                             transactionError = new Error('Transaction not found for callback');
                             console.error('⚠️ No transaction row matched callback:', {
@@ -143,36 +136,33 @@ async function callback(req, res) {
 
                             let user = null;
                             if (transaction.user_id) {
-                                const { data: userData } = await supabase
-                                    .from('users')
-                                    .select('*')
-                                    .eq('id', transaction.user_id)
-                                    .single();
-                                user = userData;
+                                const r = await db.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [transaction.user_id]);
+                                user = r.rows[0] || null;
                             }
 
                             if (!user) {
-                                user = await findUserByPhone(supabase, normalizedPhone || phoneNumber);
+                                user = await findUserByPhone(normalizedPhone || phoneNumber);
                                 if (user && !transaction.user_id) {
-                                    await supabase
-                                        .from('transactions')
-                                        .update({ user_id: user.id, updated_at: new Date().toISOString() })
-                                        .eq('id', transaction.id);
+                                    await db.query(
+                                        'UPDATE transactions SET user_id = $1, updated_at = $2 WHERE id = $3',
+                                        [user.id, new Date().toISOString(), transaction.id]
+                                    );
                                 }
                             }
 
                             if (user) {
                                 console.log('User found:', user.email);
 
-                                const { data: cartItems } = await supabase
-                                    .from('cart_items')
-                                    .select('*, products(*)')
-                                    .eq('user_id', user.id);
+                                const cartResult = await db.query(
+                                    'SELECT ci.quantity, p.name, p.price FROM cart_items ci JOIN products p ON p.id = ci.product_id WHERE ci.user_id = $1',
+                                    [user.id]
+                                );
+                                const cartItems = cartResult.rows;
 
                                 const items = cartItems ? cartItems.map(item => ({
-                                    name: item.products.name,
+                                    name: item.name,
                                     quantity: item.quantity,
-                                    price: item.products.price
+                                    price: item.price
                                 })) : null;
 
                                 try {
@@ -221,10 +211,7 @@ async function callback(req, res) {
 
                                 if (cartItems && cartItems.length > 0) {
                                     try {
-                                        await supabase
-                                            .from('cart_items')
-                                            .delete()
-                                            .eq('user_id', user.id);
+                                        await db.query('DELETE FROM cart_items WHERE user_id = $1', [user.id]);
                                         console.log('Cart cleared for user:', user.id);
                                     } catch (cartError) {
                                         console.error('Failed to clear cart for user:', user.id, cartError);
@@ -246,16 +233,10 @@ async function callback(req, res) {
                 console.log('❌ Payment failed:', ResultDesc);
 
                 try {
-                    const supabase = getSupabaseClient();
-                    await supabase
-                        .from('transactions')
-                        .update({
-                            status: 'failed',
-                            result_code: ResultCode,
-                            result_desc: ResultDesc,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('checkout_request_id', CheckoutRequestID);
+                    await db.query(
+                        'UPDATE transactions SET status = $1, result_code = $2, result_desc = $3, updated_at = $4 WHERE checkout_request_id = $5',
+                        ['failed', ResultCode, ResultDesc, new Date().toISOString(), CheckoutRequestID]
+                    );
                 } catch (dbError) {
                     console.error('Failed to update failed transaction:', dbError);
                 }
@@ -277,50 +258,44 @@ async function callback(req, res) {
             const status = Number(ResultCode) === 0 ? 'completed' : 'failed';
 
             try {
-                const supabase = getSupabaseClient();
-
                 let transaction = null;
-                const { data: existingByRef } = await supabase
-                    .from('transactions')
-                    .select('*')
-                    .eq('checkout_request_id', MessageReference)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                if (existingByRef) transaction = existingByRef;
+                {
+                    const r = await db.query(
+                        'SELECT * FROM transactions WHERE checkout_request_id = $1 ORDER BY created_at DESC LIMIT 1',
+                        [MessageReference]
+                    );
+                    transaction = r.rows[0] || null;
+                }
 
                 if (!transaction && normalizedPhone) {
-                    const { data: existingByPhone } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .eq('phone_number', normalizedPhone)
-                        .eq('status', 'initiated')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    if (existingByPhone) transaction = existingByPhone;
+                    const r = await db.query(
+                        "SELECT * FROM transactions WHERE phone_number = $1 AND status = 'initiated' ORDER BY created_at DESC LIMIT 1",
+                        [normalizedPhone]
+                    );
+                    transaction = r.rows[0] || null;
                 }
 
                 let transactionError = null;
                 if (transaction) {
-                    const { data: updatedTx, error } = await supabase
-                        .from('transactions')
-                        .update({
-                            mpesa_receipt: ReceiptNumber || null,
-                            amount: Amount ?? transaction.amount,
-                            phone_number: normalizedPhone || MobileNumber?.toString() || transaction.phone_number,
-                            transaction_date: TransactionDate ? new Date(TransactionDate).toISOString() : new Date().toISOString(),
-                            status,
-                            result_code: ResultCode,
-                            result_desc: ResultDesc,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', transaction.id)
-                        .select()
-                        .single();
-
-                    transactionError = error;
-                    if (!error) transaction = updatedTx;
+                    try {
+                        const u = await db.query(
+                            'UPDATE transactions SET mpesa_receipt = $1, amount = $2, phone_number = $3, transaction_date = $4, status = $5, result_code = $6, result_desc = $7, updated_at = $8 WHERE id = $9 RETURNING *',
+                            [
+                                ReceiptNumber || null,
+                                Amount ?? transaction.amount,
+                                normalizedPhone || MobileNumber?.toString() || transaction.phone_number,
+                                TransactionDate ? new Date(TransactionDate).toISOString() : new Date().toISOString(),
+                                status,
+                                ResultCode,
+                                ResultDesc,
+                                new Date().toISOString(),
+                                transaction.id
+                            ]
+                        );
+                        transaction = u.rows[0] || transaction;
+                    } catch (e) {
+                        transactionError = e;
+                    }
                 } else {
                     transactionError = new Error('Transaction not found for Co-op callback');
                     console.error('⚠️ No transaction row matched Co-op callback:', {
@@ -334,34 +309,31 @@ async function callback(req, res) {
                 } else if (status === 'completed') {
                     let user = null;
                     if (transaction.user_id) {
-                        const { data: userData } = await supabase
-                            .from('users')
-                            .select('*')
-                            .eq('id', transaction.user_id)
-                            .single();
-                        user = userData;
+                        const r = await db.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [transaction.user_id]);
+                        user = r.rows[0] || null;
                     }
 
                     if (!user) {
-                        user = await findUserByPhone(supabase, normalizedPhone || MobileNumber);
+                        user = await findUserByPhone(normalizedPhone || MobileNumber);
                         if (user && !transaction.user_id) {
-                            await supabase
-                                .from('transactions')
-                                .update({ user_id: user.id, updated_at: new Date().toISOString() })
-                                .eq('id', transaction.id);
+                            await db.query(
+                                'UPDATE transactions SET user_id = $1, updated_at = $2 WHERE id = $3',
+                                [user.id, new Date().toISOString(), transaction.id]
+                            );
                         }
                     }
 
                     if (user) {
-                        const { data: cartItems } = await supabase
-                            .from('cart_items')
-                            .select('*, products(*)')
-                            .eq('user_id', user.id);
+                        const cartResult = await db.query(
+                            'SELECT ci.quantity, p.name, p.price FROM cart_items ci JOIN products p ON p.id = ci.product_id WHERE ci.user_id = $1',
+                            [user.id]
+                        );
+                        const cartItems = cartResult.rows;
 
                         const items = cartItems ? cartItems.map(item => ({
-                            name: item.products.name,
+                            name: item.name,
                             quantity: item.quantity,
-                            price: item.products.price
+                            price: item.price
                         })) : null;
 
                         try {
@@ -374,7 +346,7 @@ async function callback(req, res) {
                                     amount: Amount,
                                     mpesaReceipt: ReceiptNumber || MessageReference,
                                     phoneNumber: (normalizedPhone || MobileNumber)?.toString(),
-                                    items,
+                                    items: items,
                                     status: 'completed'
                                 }
                             );
@@ -394,7 +366,7 @@ async function callback(req, res) {
                                 amount: Amount,
                                 mpesaReceipt: ReceiptNumber || MessageReference,
                                 phoneNumber: (normalizedPhone || MobileNumber)?.toString(),
-                                items
+                                items: items
                             });
                         } catch (emailError) {
                             console.error('❌ Failed to send admin notification (Co-op):', {
@@ -406,10 +378,7 @@ async function callback(req, res) {
 
                         if (cartItems && cartItems.length > 0) {
                             try {
-                                await supabase
-                                    .from('cart_items')
-                                    .delete()
-                                    .eq('user_id', user.id);
+                                await db.query('DELETE FROM cart_items WHERE user_id = $1', [user.id]);
                             } catch (cartError) {
                                 console.error('Failed to clear cart for user:', user.id, cartError);
                             }

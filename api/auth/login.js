@@ -1,6 +1,6 @@
-const { getSupabaseClient } = require('../utils/supabase');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const db = require('../utils/db');
 
 async function login(req, res) {
     try {
@@ -16,20 +16,13 @@ async function login(req, res) {
             return res.status(400).json({ error: 'Invalid email format' });
         }
 
-        const supabase = getSupabaseClient();
+        const result = await db.query(
+            'SELECT * FROM users WHERE email = $1 LIMIT 1',
+            [normalizedEmail]
+        );
 
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', normalizedEmail)
-            .single();
-
-        if (error || !user) {
-            if (error) {
-                console.error('Supabase error:', error);
-            }
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
+        const user = result.rows[0];
+        if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
         if (user.is_active === false) {
             return res.status(403).json({
@@ -52,10 +45,10 @@ async function login(req, res) {
             { expiresIn: '7d' }
         );
 
-        await supabase
-            .from('users')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', user.id);
+        await db.query(
+            'UPDATE users SET last_login = $1 WHERE id = $2',
+            [new Date().toISOString(), user.id]
+        );
 
         const { password_hash, ...userData } = user;
 

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getSupabaseClient } = require('../utils/supabase');
+const db = require('../utils/db');
 
 async function verifyEmail(req, res) {
     try {
@@ -31,17 +31,15 @@ async function verifyEmail(req, res) {
 
         const tokenHash = crypto.createHash('sha256').update(sanitizedToken).digest('hex');
 
-        const supabase = getSupabaseClient();
-
-        // Fetch user with all necessary fields
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('id, email_verification_expires_at, email_verification_token_hash, is_active, email_verified_at')
-            .eq('email', normalizedEmail)
-            .maybeSingle();
-
-        if (error) {
-            console.error('Supabase error:', error);
+        let user;
+        try {
+            const result = await db.query(
+                'SELECT id, email_verification_expires_at, email_verification_token_hash, is_active, email_verified_at FROM users WHERE email = $1 LIMIT 1',
+                [normalizedEmail]
+            );
+            user = result.rows[0] || null;
+        } catch (error) {
+            console.error('Database error:', error);
             if (wantsHtml) return redirectToLogin('error', 'Failed to verify email');
             return res.status(500).json({ error: 'Failed to verify email' });
         }
@@ -90,36 +88,32 @@ async function verifyEmail(req, res) {
             return res.status(400).json({ error: 'Invalid verification token' });
         }
 
-        // Update user - set verified status and clear token
-        const { error: updateError } = await supabase
-            .from('users')
-            .update({
-                is_active: true,
-                email_verified_at: new Date().toISOString(),
-                email_verification_token_hash: null,
-                email_verification_expires_at: null
-            })
-            .eq('id', user.id)
-            // IMPROVEMENT: Only update if not already active (prevents race conditions)
-            .eq('is_active', false);
+        let updated = null;
+        try {
+            const updateResult = await db.query(
+                'UPDATE users SET is_active = $1, email_verified_at = $2, email_verification_token_hash = NULL, email_verification_expires_at = NULL WHERE id = $3 AND is_active = false RETURNING id, is_active',
+                [true, new Date().toISOString(), user.id]
+            );
+            updated = updateResult.rows[0] || null;
+        } catch (updateError) {
+            console.error('Database update error:', updateError);
+        }
 
-        if (updateError) {
-            console.error('Supabase update error:', updateError);
-            // Check if it was already verified in a race condition
-            const { data: recheckUser } = await supabase
-                .from('users')
-                .select('is_active')
-                .eq('id', user.id)
-                .single();
-            
-            if (recheckUser && recheckUser.is_active) {
-                if (wantsHtml) return redirectToLogin('success', 'Email verified successfully');
-                return res.status(200).json({ 
-                    success: true, 
-                    message: 'Email verified successfully. You can now log in.' 
-                });
+        if (!updated) {
+            try {
+                const recheck = await db.query('SELECT is_active FROM users WHERE id = $1 LIMIT 1', [user.id]);
+                const recheckUser = recheck.rows[0];
+                if (recheckUser && recheckUser.is_active) {
+                    if (wantsHtml) return redirectToLogin('success', 'Email verified successfully');
+                    return res.status(200).json({
+                        success: true,
+                        message: 'Email verified successfully. You can now log in.'
+                    });
+                }
+            } catch (recheckError) {
+                console.error('Database recheck error:', recheckError);
             }
-            
+
             if (wantsHtml) return redirectToLogin('error', 'Failed to complete verification');
             return res.status(500).json({ error: 'Failed to complete verification' });
         }

@@ -1,8 +1,8 @@
-const { getSupabaseClient } = require('../utils/supabase');
 const bcrypt = require('bcryptjs');
 const { normalizeKenyanPhone } = require('../utils/phone');
 const crypto = require('crypto');
 const { sendEmailVerificationEmail } = require('../utils/email');
+const db = require('../utils/db');
 
 async function signup(req, res) {
     try {
@@ -49,17 +49,13 @@ async function signup(req, res) {
             return res.status(400).json({ error: 'Invalid full name' });
         }
 
-        const supabase = getSupabaseClient();
+        const existingResult = await db.query(
+            'SELECT id, email, phone_number FROM users WHERE email = $1 OR phone_number = $2 LIMIT 1',
+            [normalizedEmail, normalizedPhone]
+        );
 
-        // Check for existing user - include phone number check for better UX
-        const { data: existingUsers } = await supabase
-            .from('users')
-            .select('id, email, phone_number')
-            .or(`email.eq.${normalizedEmail},phone_number.eq.${normalizedPhone}`)
-            .limit(1);
-
-        if (existingUsers && existingUsers.length > 0) {
-            const existing = existingUsers[0];
+        if (existingResult.rows.length > 0) {
+            const existing = existingResult.rows[0];
             if (existing.email === normalizedEmail) {
                 return res.status(409).json({ error: 'Email already registered' });
             }
@@ -81,33 +77,30 @@ async function signup(req, res) {
         const appBaseUrl = process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
         const verifyUrl = `${appBaseUrl}/api/auth/verify-email?email=${encodeURIComponent(normalizedEmail)}&token=${encodeURIComponent(rawToken)}`;
 
-        // Create user with verification token
-        const { data: newUser, error } = await supabase
-            .from('users')
-            .insert([
-                {
-                    email: normalizedEmail,
-                    password_hash: hashedPassword,
-                    full_name: sanitizedFullName,
-                    phone_number: normalizedPhone,
-                    created_at: new Date().toISOString(),
-                    is_active: false,
-                    email_verification_token_hash: tokenHash,
-                    email_verification_expires_at: expiresAt
-                }
-            ])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Supabase error:', error);
-            // Provide more specific error for duplicate entries
-            if (error.code === '23505') {
+        let newUser;
+        try {
+            const insertResult = await db.query(
+                'INSERT INTO users (email, password_hash, full_name, phone_number, created_at, is_active, email_verification_token_hash, email_verification_expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+                [
+                    normalizedEmail,
+                    hashedPassword,
+                    sanitizedFullName,
+                    normalizedPhone,
+                    new Date().toISOString(),
+                    false,
+                    tokenHash,
+                    expiresAt
+                ]
+            );
+            newUser = insertResult.rows[0];
+        } catch (error) {
+            console.error('Database error:', error);
+            if (error && error.code === '23505') {
                 return res.status(409).json({ error: 'User already exists' });
             }
-            return res.status(500).json({ 
-                error: 'Failed to create user', 
-                details: error.message 
+            return res.status(500).json({
+                error: 'Failed to create user',
+                details: error.message
             });
         }
 

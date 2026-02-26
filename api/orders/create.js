@@ -1,5 +1,5 @@
-const { getSupabaseClient } = require('../utils/supabase');
 const { sendOrderConfirmationEmail } = require('../utils/email');
+const db = require('../utils/db');
 
 function parseKesAmount(value) {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -23,27 +23,23 @@ async function create(req, res) {
             });
         }
 
-        const supabase = getSupabaseClient();
+        const txResult = await db.query(
+            'SELECT * FROM transactions WHERE id = $1 LIMIT 1',
+            [transactionId]
+        );
 
-        const { data: transaction, error: txError } = await supabase
-            .from('transactions')
-            .select('*')
-            .eq('id', transactionId)
-            .single();
-
-        if (txError || !transaction) {
-            return res.status(404).json({ error: 'Transaction not found' });
-        }
+        const transaction = txResult.rows[0];
+        if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
 
         if (transaction.status !== 'completed') {
             return res.status(400).json({ error: 'Transaction not completed' });
         }
 
-        const { data: existingOrder } = await supabase
-            .from('orders')
-            .select('id, order_number')
-            .eq('transaction_id', transactionId)
-            .maybeSingle();
+        const existingOrderResult = await db.query(
+            'SELECT id, order_number FROM orders WHERE transaction_id = $1 LIMIT 1',
+            [transactionId]
+        );
+        const existingOrder = existingOrderResult.rows[0] || null;
 
         if (existingOrder) {
             return res.status(200).json({
@@ -59,65 +55,39 @@ async function create(req, res) {
             return sum + (parseKesAmount(item.price) * item.quantity);
         }, 0);
 
-        const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert([
-                {
-                    user_id: userId,
-                    transaction_id: transactionId,
-                    order_number: orderNumber,
-                    total_amount: totalAmount,
-                    status: 'confirmed',
-                    created_at: new Date().toISOString()
-                }
-            ])
-            .select()
-            .single();
+        const { order, user } = await db.withTransaction(async (client) => {
+            const orderInsert = await client.query(
+                'INSERT INTO orders (user_id, transaction_id, order_number, total_amount, status, created_at) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+                [userId, transactionId, orderNumber, totalAmount, 'confirmed', new Date().toISOString()]
+            );
+            const order = orderInsert.rows[0];
 
-        if (orderError) {
-            console.error('Order creation error:', orderError);
-            return res.status(500).json({
-                error: 'Failed to create order',
-                message: orderError.message
-            });
-        }
+            const orderItems = cartItems.map(item => ({
+                order_id: order.id,
+                product_name: item.title || item.name,
+                quantity: item.quantity,
+                unit_price: parseKesAmount(item.price),
+                subtotal: parseKesAmount(item.price) * item.quantity,
+                created_at: new Date().toISOString()
+            }));
 
-        const orderItems = cartItems.map(item => ({
-            order_id: order.id,
-            product_name: item.title || item.name,
-            quantity: item.quantity,
-            unit_price: parseKesAmount(item.price),
-            subtotal: parseKesAmount(item.price) * item.quantity,
-            created_at: new Date().toISOString()
-        }));
+            for (const item of orderItems) {
+                await client.query(
+                    'INSERT INTO order_items (order_id, product_name, quantity, unit_price, subtotal, created_at) VALUES ($1,$2,$3,$4,$5,$6)',
+                    [item.order_id, item.product_name, item.quantity, item.unit_price, item.subtotal, item.created_at]
+                );
+            }
 
-        const { error: itemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems);
+            await client.query('DELETE FROM cart_items WHERE user_id = $1', [userId]);
 
-        if (itemsError) {
-            console.error('Order items creation error:', itemsError);
-        }
+            const userResult = await client.query(
+                'SELECT email, full_name FROM users WHERE id = $1 LIMIT 1',
+                [userId]
+            );
+            const user = userResult.rows[0] || null;
 
-        const { error: cartError } = await supabase
-            .from('cart_items')
-            .delete()
-            .eq('user_id', userId);
-
-        if (cartError) {
-            console.error('Cart clear error:', cartError);
-        }
-
-        console.log('Fetching user details for email, userId:', userId);
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('email, full_name')
-            .eq('id', userId)
-            .single();
-
-        if (userError) {
-            console.error('Error fetching user for email:', userError);
-        }
+            return { order, user };
+        });
 
         if (user && user.email) {
             try {
