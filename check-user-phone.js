@@ -2,24 +2,19 @@
 // Check user phone numbers in database
 
 require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
+const db = require('./api/utils/db');
 
 async function checkUsers() {
-    const supabase = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    
     console.log('🔍 Checking user phone numbers...\n');
     
     // Get all users
-    const { data: users, error } = await supabase
-        .from('users')
-        .select('id, email, full_name, phone_number')
-        .order('created_at', { ascending: false })
-        .limit(10);
-    
-    if (error) {
+    let users;
+    try {
+        const result = await db.query(
+            'SELECT id, email, full_name, phone_number FROM users ORDER BY created_at DESC LIMIT 10'
+        );
+        users = result.rows;
+    } catch (error) {
         console.error('❌ Error:', error);
         return;
     }
@@ -41,11 +36,16 @@ async function checkUsers() {
     
     // Check for the specific phone number
     const targetPhone = '254757238817';
-    const { data: matchingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('phone_number', targetPhone)
-        .single();
+    let matchingUser = null;
+    try {
+        const result = await db.query(
+            'SELECT * FROM users WHERE phone_number = $1 LIMIT 1',
+            [targetPhone]
+        );
+        matchingUser = result.rows[0] || null;
+    } catch (error) {
+        console.error('❌ Error:', error);
+    }
     
     console.log(`\n🔎 Looking for phone: ${targetPhone}`);
     if (matchingUser) {
