@@ -336,7 +336,7 @@ async function payment(req, res) {
             PartyA: parseInt(phoneNumber),
             PartyB: parseInt(process.env.MPESA_SHORTCODE),
             PhoneNumber: parseInt(phoneNumber),
-            CallBackURL: callbackUrl || 'http://localhost:3000/api/mpesa/callback',
+            CallBackURL: callbackUrl || 'https://kejayacapo.shop/api/mpesa/callback',
             AccountReference: resolvedAccountReference,
             TransactionDesc: resolvedTransactionDesc
         };
