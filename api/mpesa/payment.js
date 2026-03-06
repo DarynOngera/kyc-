@@ -406,11 +406,12 @@ async function payment(req, res) {
         });
 
         const status = Number(error.httpStatus) || 500;
+        const safeMessage = 'Payment request failed. Please try again later.';
 
         if (error.code === 'COOP_AUTH_FAILED') {
             return res.status(502).json({
                 error: 'Payment failed',
-                message: 'Co-op authentication blocked. Confirm Co-op has allowlisted the server outbound IP and that COOP_BASIC_AUTH is correct.',
+                message: safeMessage,
                 requestId
             });
         }
@@ -418,14 +419,14 @@ async function payment(req, res) {
         if (error.code === 'MPESA_AUTH_FAILED') {
             return res.status(status).json({
                 error: 'Payment failed',
-                message: 'Payment service is temporarily unavailable. Please try again later.',
+                message: safeMessage,
                 requestId
             });
         }
 
         return res.status(status).json({
             error: 'Payment failed',
-            message: 'Payment request failed. Please try again later.',
+            message: safeMessage,
             requestId
         });
     }
