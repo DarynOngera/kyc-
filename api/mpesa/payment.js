@@ -325,7 +325,7 @@ async function payment(req, res) {
         }
 
         const requestBody = {
-            BusinessShortCode: parseInt(process.env.MPESA_SHORTCODE),
+            BusinessShortCode: 174379,
             Password: password,
             Timestamp: timestamp,
             TransactionType: 'CustomerPayBillOnline',
