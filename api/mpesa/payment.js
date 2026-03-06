@@ -111,8 +111,8 @@ async function coopStkPush({ phoneNumber, amount, accountReference }) {
     const operatorCode = requireEnv('COOP_OPERATOR_CODE');
 
     const messageReference = buildMessageReference();
-    //const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
-    const narration = 'KejaYaCapo';
+    const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
+    
     
     const body = {
         MessageReference: messageReference,
@@ -120,7 +120,7 @@ async function coopStkPush({ phoneNumber, amount, accountReference }) {
         OperatorCode: operatorCode,
         TransactionCurrency: 'KES',
         MobileNumber: String(phoneNumber),
-        AccountReference: narration,
+        Narration: narration,
         Amount: Math.round(Number(amount)),
         MessageDateTime: new Date().toISOString(),
         OtherDetails: [
