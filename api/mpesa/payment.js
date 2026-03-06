@@ -112,7 +112,7 @@ async function coopStkPush({ phoneNumber, amount, accountReference }) {
 
     const messageReference = buildMessageReference();
     //const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
-    const narration = 'KejaYaCapo';
+    const narration = 'KejaYaCa';
     
     const body = {
         MessageReference: messageReference,
@@ -325,7 +325,7 @@ async function payment(req, res) {
         }
 
         const requestBody = {
-            BusinessShortCode: 174379,
+            BusinessShortCode: parseInt(process.env.MPESA_SHORTCODE),
             Password: password,
             Timestamp: timestamp,
             TransactionType: 'CustomerPayBillOnline',
