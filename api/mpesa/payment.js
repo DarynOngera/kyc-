@@ -111,7 +111,9 @@ async function coopStkPush({ phoneNumber, amount, accountReference }) {
     const operatorCode = requireEnv('COOP_OPERATOR_CODE');
 
     const messageReference = buildMessageReference();
-    const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
+    //const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
+    const narration = 'KejaYaCapo';
+    
     const body = {
         MessageReference: messageReference,
         CallBackUrl: callbackUrl,
