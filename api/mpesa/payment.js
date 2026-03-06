@@ -6,6 +6,7 @@ let coopTokenCache = {
     accessToken: null,
     expiresAtMs: 0
 };
+const STK_REFERENCE = 'KEJAYACAPO';
 
 function getPaymentProvider() {
     return (process.env.PAYMENT_PROVIDER || 'mpesa').toLowerCase();
@@ -111,7 +112,7 @@ async function coopStkPush({ phoneNumber, amount, accountReference }) {
     const operatorCode = requireEnv('COOP_OPERATOR_CODE');
 
     const messageReference = buildMessageReference();
-    const narration = normalizeNarration(accountReference) || 'KejaYaCapo';
+    const narration = STK_REFERENCE;
     
     
     const body = {
@@ -130,6 +131,9 @@ async function coopStkPush({ phoneNumber, amount, accountReference }) {
             }
         ]
     };
+    console.log('Co-op request references', {
+        narration
+    });
 
     const resp = await axios.post(
         'https://openapi.co-opbank.co.ke/FT/stk/1.0.0',
@@ -324,8 +328,8 @@ async function payment(req, res) {
             console.warn('MPESA_CALLBACK_URL not set; STK push will use fallback (not recommended for EC2)');
         }
 
-        const resolvedAccountReference = (accountReference == null ? '' : String(accountReference)).trim() || 'KejaYaCapo';
-        const resolvedTransactionDesc = resolvedAccountReference;
+        const resolvedAccountReference = STK_REFERENCE;
+        const resolvedTransactionDesc = STK_REFERENCE;
 
         const requestBody = {
             BusinessShortCode: parseInt(process.env.MPESA_SHORTCODE),
