@@ -324,6 +324,9 @@ async function payment(req, res) {
             console.warn('MPESA_CALLBACK_URL not set; STK push will use fallback (not recommended for EC2)');
         }
 
+        const resolvedAccountReference = (accountReference == null ? '' : String(accountReference)).trim() || 'KejaYaCapo';
+        const resolvedTransactionDesc = resolvedAccountReference;
+
         const requestBody = {
             BusinessShortCode: parseInt(process.env.MPESA_SHORTCODE),
             Password: password,
@@ -334,14 +337,18 @@ async function payment(req, res) {
             PartyB: parseInt(process.env.MPESA_SHORTCODE),
             PhoneNumber: parseInt(phoneNumber),
             CallBackURL: callbackUrl || 'http://localhost:3000/api/mpesa/callback',
-            AccountReference: accountReference || 'KejaYaCapo',
-            TransactionDesc: 'Payment for KejaYaCapo Order'
+            AccountReference: resolvedAccountReference,
+            TransactionDesc: resolvedTransactionDesc
         };
 
         console.log('STK push initiated', {
             amount,
             phoneNumber,
             shortcode: process.env.MPESA_SHORTCODE
+        });
+        console.log('M-Pesa request references', {
+            accountReference: resolvedAccountReference,
+            transactionDesc: resolvedTransactionDesc
         });
 
         const baseURL = getMpesaBaseURL();
