@@ -89,6 +89,9 @@ app.get('/signup', (req, res) => sendView(res, 'signup.html'));
 app.get('/about', (req, res) => sendView(res, 'about.html'));
 app.get('/terms', (req, res) => sendView(res, 'terms.html'));
 app.get('/order-confirmation', (req, res) => sendView(res, 'order-confirmation.html'));
+app.get('/mboka', (req, res) => sendView(res, 'mboka.html'));
+app.get('/mboka/videos', (req, res) => sendView(res, 'mboka-videos.html'));
+app.get('/mboka/gallery', (req, res) => sendView(res, 'mboka-gallery.html'));
 
 // Product pages
 app.get('/products/:slug', (req, res) => {
