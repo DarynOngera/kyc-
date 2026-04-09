@@ -97,7 +97,7 @@ button {
 .site-header {
     position: relative;
     background-color: var(--color-background);
-    padding: var(--spacing-md) var(--gutter);
+    padding: var(--spacing-sm) var(--gutter);
 }
 
 .header-container {
@@ -275,7 +275,7 @@ button {
     background-color: var(--color-background);
     color: var(--color-primary);
     overflow: hidden;
-    padding: var(--spacing-2xl) 0;
+    padding: var(--spacing-xl) 0;
 }
 
 .scrolling-text {
@@ -309,8 +309,243 @@ button {
    Main Content
    =================================== */
 .main-content {
-    min-height: 60vh;
+    min-height: 55vh;
     width: 100%;
+}
+
+/* ===================================
+   Mboka Section
+   =================================== */
+.mboka-section {
+    padding: var(--spacing-xl) var(--gutter);
+}
+
+.mboka-container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.mboka-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.mboka-kicker {
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.75;
+}
+
+.mboka-title {
+    font-size: var(--font-size-3xl);
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    line-height: 1.1;
+}
+
+.mboka-subtitle {
+    font-size: var(--font-size-lg);
+    max-width: 620px;
+    margin-top: var(--spacing-xs);
+    opacity: 0.8;
+}
+
+.mboka-inline-link {
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 2px;
+}
+
+.mboka-hub-grid {
+    margin-top: var(--spacing-lg);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+}
+
+.mboka-hub-card {
+    border: 1px solid var(--color-border);
+    min-height: 180px;
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    transition: transform var(--transition-base), border-color var(--transition-base);
+}
+
+.mboka-hub-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-primary);
+    opacity: 1;
+}
+
+.mboka-hub-label {
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    letter-spacing: 0.02em;
+}
+
+.mboka-hub-arrow {
+    font-size: 1.5rem;
+    opacity: 0.7;
+}
+
+.mboka-video-grid {
+    margin-top: var(--spacing-lg);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.mboka-video-card {
+    border: 1px solid var(--color-border);
+    background: var(--color-background);
+}
+
+.mboka-video-preview-wrap {
+    aspect-ratio: 16 / 9;
+    background: #f5f5f5;
+    overflow: hidden;
+}
+
+.mboka-video-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-base);
+}
+
+.mboka-video-card:hover .mboka-video-preview {
+    transform: scale(1.02);
+}
+
+.mboka-video-meta {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.mboka-video-title {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+}
+
+.mboka-video-artist {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+}
+
+.mboka-watch-btn {
+    margin-top: var(--spacing-sm);
+    width: fit-content;
+    border: 1px solid var(--color-primary);
+    padding: 0.55rem 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: var(--font-size-sm);
+    transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+.mboka-watch-btn:hover {
+    background-color: var(--color-primary);
+    color: var(--color-background);
+    opacity: 1;
+}
+
+.mboka-gallery-grid {
+    margin-top: var(--spacing-lg);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-sm);
+}
+
+.mboka-gallery-item {
+    border: 1px solid var(--color-border);
+    background: #f5f5f5;
+}
+
+.mboka-gallery-item img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    background: #f5f5f5;
+}
+
+.mboka-gallery-caption {
+    padding: 0.7rem 0.8rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.mboka-empty {
+    border: 1px dashed var(--color-border);
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--color-text-secondary);
+    margin-top: var(--spacing-xl);
+    letter-spacing: 0.02em;
+}
+
+.mboka-video-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+}
+
+.mboka-video-modal.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mboka-video-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.mboka-video-modal-content {
+    position: relative;
+    width: min(960px, calc(100vw - 2rem));
+    z-index: 1;
+}
+
+.mboka-video-close {
+    margin-left: auto;
+    display: block;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    color: #ffffff;
+    padding: 0.4rem 0.8rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.mboka-video-frame-wrap {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: #000000;
+    aspect-ratio: 16 / 9;
+}
+
+.mboka-video-frame-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+@media (max-width: 1024px) {
+    .mboka-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 /* ===================================
@@ -492,8 +727,8 @@ button {
 .site-footer {
     background-color: var(--color-background);
     border-top: 1px solid var(--color-border);
-    padding: var(--spacing-xl) var(--gutter);
-    margin-top: var(--spacing-2xl);
+    padding: var(--spacing-lg) var(--gutter);
+    margin-top: var(--spacing-xl);
 }
 
 .footer-container {
@@ -506,15 +741,15 @@ button {
     display: flex;
     justify-content: center;
     gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .social-links a {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 50px;
-    height: 50px;
+    width: 44px;
+    height: 44px;
     transition: opacity var(--transition-base);
 }
 
@@ -595,7 +830,7 @@ button {
 /* Mobile Navigation */
 @media screen and (max-width: 767px) {
     .site-header {
-        padding: var(--spacing-sm) var(--gutter-mobile);
+        padding: var(--spacing-xs) var(--gutter-mobile);
     }
     
     .main-nav {
@@ -622,7 +857,38 @@ button {
     }
     
     .scrolling-text-inner span {
-        font-size: 4rem;
+        font-size: 3.25rem;
+    }
+
+    .hero-banner {
+        padding: var(--spacing-lg) 0;
+    }
+
+    .mboka-section {
+        padding: var(--spacing-md) var(--gutter-mobile);
+    }
+
+    .mboka-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .mboka-title {
+        font-size: clamp(2rem, 12vw, 3rem);
+    }
+
+    .mboka-subtitle {
+        font-size: var(--font-size-base);
+    }
+
+    .mboka-hub-grid,
+    .mboka-video-grid,
+    .mboka-gallery-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mboka-hub-card {
+        min-height: 160px;
     }
 }
 
@@ -695,6 +961,20 @@ button {
     margin-top: var(--spacing-lg);
 }
 
+.terms-section {
+    padding: var(--spacing-2xl) var(--gutter);
+}
+
+.terms-container {
+    max-width: 980px;
+    margin: 0 auto;
+}
+
+.terms-container h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin-bottom: var(--spacing-sm);
+}
+
 .terms-container p {
     line-height: 1.8;
     margin-bottom: var(--spacing-md);
@@ -702,6 +982,12 @@ button {
 
 .terms-container em {
     opacity: 0.8;
+}
+
+@media (max-width: 767px) {
+    .terms-section {
+        padding: var(--spacing-lg) var(--gutter-mobile);
+    }
 }
 
 /* ===================================
