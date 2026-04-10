@@ -52,7 +52,7 @@
             },
             {
                 id: 'mboka-gallery-4',
-                src: '/assets/gallery/481A9235.jpg',
+                src: '/assets/gallery/CARLITO.jpeg',
                 alt: 'Mboka gallery photo 04'
             },
             {
@@ -84,6 +84,26 @@
                 id: 'mboka-gallery-10',
                 src: '/assets/gallery/IMG_2284.JPG',
                 alt: 'Mboka gallery photo 10'
+            },
+            {
+                id: 'mboka-gallery-11',
+                src: '/assets/gallery/WM_ORANGE.jpeg',
+                alt: 'Mboka gallery photo 11'
+            },
+            {
+                id: 'mboka-gallery-12',
+                src: '/assets/gallery/WM_GREEN.jpeg',
+                alt: 'Mboka gallery photo 12'
+            },
+            {
+                id: 'mboka-gallery-13',
+                src: '/assets/gallery/WM_ORANGE(1).jpeg',
+                alt: 'Mboka gallery photo 13'
+            },
+            {
+                id: 'mboka-gallery-14',
+                src: '/assets/gallery/WM_GREEN(1).jpeg',
+                alt: 'Mboka gallery photo 14'
             }
         ]
     };
